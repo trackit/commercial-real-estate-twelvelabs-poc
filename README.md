@@ -54,6 +54,8 @@ High-level flow:
 4. **Narration (Pegasus + Polly)** – Pegasus generates a single sentence per segment; AWS Polly turns each sentence into audio.
 5. **Editing (ffmpeg)** – ffmpeg cuts, overlays, and concatenates the segments using the concat demuxer into one final MP4.
 
+![Architecture Overview](./assets/architecture.png)
+
 ## Prerequisites
 
 You will need:

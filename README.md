@@ -70,6 +70,36 @@ You will need:
   - A corresponding VIDEO_ID and INDEX_ID for that embedded video
 - A Google Gemini API key (Generative Language API / Gemini API)
 
+## Project Structure
+
+```
+commercial-real-estate-twelvelabs-poc/
+├── .gitignore
+├── .env.example          # Template for environment variables
+├── README.md
+├── assets/
+│   └── architecture.png
+├── scripts/              # Shell scripts for video processing
+│   ├── DejaVuSans-Bold.ttf
+│   ├── script.sh         # Main video pipeline script
+│   └── insights.sh       # Location insights script
+├── backend/              # Node.js Express API server
+│   ├── src/
+│   │   ├── index.ts
+│   │   ├── config/
+│   │   ├── middleware/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   └── types/
+│   ├── package.json
+│   └── tsconfig.json
+└── frontend/             # React/Vite client application
+    ├── src/
+    ├── package.json
+    ├── vite.config.ts
+    └── tsconfig.json
+```
+
 ## Installation
 
 Clone the repository:
@@ -79,10 +109,29 @@ git clone git@github.com:trackit/commercial-real-estate-twelvelabs-poc.git
 cd commercial-real-estate-twelvelabs-poc
 ```
 
-Make the script executable:
+Copy the environment template and configure your variables:
 
 ```bash
-chmod +x script.sh
+cp .env.example .env
+# Edit .env with your API keys and configuration
+```
+
+Install dependencies for both frontend and backend:
+
+```bash
+# Install backend dependencies
+cd backend
+npm install
+
+# Install frontend dependencies
+cd ../frontend
+npm install
+```
+
+Make the scripts executable:
+
+```bash
+chmod +x scripts/script.sh scripts/insights.sh
 ```
 
 Make sure `ffmpeg`, `curl`, `jq`, and `aws` are installed and on your `PATH`.
@@ -143,16 +192,36 @@ If you don’t set these variables, the script will fall back to placeholder val
 
 ## Usage
 
-Once your environment variables are configured and your video is indexed in TwelveLabs:
+### Running the Web Application
+
+Start the backend server:
 
 ```bash
-bash ./script.sh
+cd backend
+npm run dev
 ```
 
-For the insights script, you can use the `insights.sh` script:
+In a separate terminal, start the frontend:
 
 ```bash
-bash ./insights.sh "12 Rue Exemple, Paris, France"
+cd frontend
+npm run dev
+```
+
+The web application will be available at `http://localhost:5173` (frontend) with the API running on `http://localhost:3001` (backend).
+
+### Running Scripts Directly
+
+Once your environment variables are configured and your video is indexed in TwelveLabs, you can also run the scripts directly:
+
+```bash
+bash ./scripts/script.sh
+```
+
+For the insights script:
+
+```bash
+bash ./scripts/insights.sh "12 Rue Exemple, Paris, France"
 ```
 
 ## Pipeline Details

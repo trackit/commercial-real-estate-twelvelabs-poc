@@ -5,15 +5,16 @@
 # End-to-end pipeline to:
 #  - retrieve Marengo segments from a TwelveLabs index
 #  - annotate each segment with Pegasus (room type + appeal score)
-#  - select the best segments (~60s total) via Gemini
+#  - select the best segments (~60s total) via Nova Pro or Gemini
 #  - generate per-segment voiceover with Pegasus
 #  - synthesize audio via AWS Polly or ElevenLabs
 #  - overlay labels and concatenate with ffmpeg into a final short video
 #
 # Requirements:
-#  - bash, curl, jq, ffmpeg, aws CLI (if using Polly)
+#  - bash, curl, jq, ffmpeg, aws CLI (if using Polly or Nova Pro)
 #  - TwelveLabs API key
-#  - Google Gemini API key
+#  - Google Gemini API key (if using Gemini for LLM)
+#  - AWS credentials with bedrock:InvokeModel (if using Nova Pro for LLM)
 #  - AWS credentials with polly:SynthesizeSpeech (if using Polly)
 #  - ElevenLabs API key (if using ElevenLabs)
 #
@@ -55,6 +56,12 @@ ELEVENLABS_VOICE_ID="${ELEVENLABS_VOICE_ID:-"CHANGE_ME_ELEVENLABS_VOICE_ID"}"
 
 # Gemini config (API key from env)
 GEMINI_API_KEY="${GEMINI_API_KEY:-"CHANGE_ME_GEMINI_API_KEY"}"
+
+# LLM provider for segment selection: "nova" (default) or "gemini"
+LLM_PROVIDER="${LLM_PROVIDER:-"nova"}"
+
+# AWS config for Nova Pro
+AWS_REGION="${AWS_REGION:-"us-east-1"}"
 
 # Max number of parallel ffmpeg + TTS jobs
 MAX_JOBS="${MAX_JOBS:-1}"
@@ -306,6 +313,97 @@ Only return the pure JSON object.
 EOF
 }
 
+nova_selection() {
+  local candidates_json="$1"
+  local prompt
+  prompt=$(build_gemini_selection_prompt "$candidates_json")
+
+  local messages_json
+  messages_json=$(jq -n --arg text "$prompt" '[{"role": "user", "content": [{"text": $text}]}]')
+
+  local response
+  response=$(aws bedrock-runtime converse \
+    --model-id "us.amazon.nova-pro-v1:0" \
+    --region "$AWS_REGION" \
+    --messages "$messages_json" \
+    --inference-config '{"maxTokens": 4096, "temperature": 0.0}' \
+    2>&1)
+
+  if [ $? -ne 0 ]; then
+    echo "!! Nova Pro selection error (AWS CLI error):" >&2
+    echo "$response" >&2
+    return 1
+  fi
+
+  local output_text
+  output_text=$(echo "$response" | jq -r '.output.message.content[0].text // empty')
+
+  if [ -z "$output_text" ]; then
+    echo "!! Nova Pro selection error: empty response text." >&2
+    echo "Raw response was:" >&2
+    echo "$response" >&2
+    return 1
+  fi
+
+  local clean_text
+  clean_text=$(
+    printf '%s\n' "$output_text" \
+      | sed -e 's/^```json[[:space:]]*//g' \
+            -e 's/^```[[:space:]]*//g' \
+            -e 's/```[[:space:]]*$//g'
+  )
+
+  echo "$clean_text"
+}
+
+gemini_selection() {
+  local candidates_json="$1"
+  local prompt
+  prompt=$(build_gemini_selection_prompt "$candidates_json")
+
+  local request
+  request=$(jq -n --arg text "$prompt" '{
+    contents: [
+      {
+        role: "user",
+        parts: [ { text: $text } ]
+      }
+    ]
+  }')
+
+  local response
+  response=$(
+    curl -s -X POST \
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=$GEMINI_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d "$request"
+  )
+
+  if echo "$response" | jq -e 'has("error")' >/dev/null 2>&1; then
+    echo "!! Gemini selection error (API error):" >&2
+    echo "$response" | jq '.error' >&2
+    return 1
+  fi
+
+  local output_text
+  output_text=$(echo "$response" | jq -r '.candidates[0].content.parts[0].text // empty')
+
+  if [ -z "$output_text" ]; then
+    echo "!! Gemini selection error: empty response text." >&2
+    return 1
+  fi
+
+  local clean_text
+  clean_text=$(
+    printf '%s\n' "$output_text" \
+      | sed -e 's/^```json[[:space:]]*//g' \
+            -e 's/^```[[:space:]]*//g' \
+            -e 's/```[[:space:]]*$//g'
+  )
+
+  echo "$clean_text"
+}
+
 # Agency + street labels for branding
 pick_agency_and_street() {
   local agencies=(
@@ -478,6 +576,7 @@ process_segment() {
 ########################################
 
 TTS_PROVIDER_NORMALIZED=$(printf '%s' "$TTS_PROVIDER" | tr '[:upper:]' '[:lower:]')
+LLM_PROVIDER_NORMALIZED=$(printf '%s' "$LLM_PROVIDER" | tr '[:upper:]' '[:lower:]')
 
 if ! command -v ffmpeg >/dev/null 2>&1; then
   echo "ffmpeg not found. Please install ffmpeg."
@@ -517,11 +616,25 @@ case "$TTS_PROVIDER_NORMALIZED" in
     ;;
 esac
 
-if [ -z "$GEMINI_API_KEY" ] || [ "$GEMINI_API_KEY" = "CHANGE_ME_GEMINI_API_KEY" ]; then
-  echo "GEMINI_API_KEY is not set. Please export your Gemini API key:"
-  echo "  export GEMINI_API_KEY=\"your_api_key_here\""
-  exit 1
-fi
+case "$LLM_PROVIDER_NORMALIZED" in
+  nova)
+    if ! command -v aws >/dev/null 2>&1; then
+      echo "aws CLI not found. Please install and configure AWS CLI to use Nova Pro."
+      exit 1
+    fi
+    ;;
+  gemini)
+    if [ -z "$GEMINI_API_KEY" ] || [ "$GEMINI_API_KEY" = "CHANGE_ME_GEMINI_API_KEY" ]; then
+      echo "GEMINI_API_KEY is not set. Please export your Gemini API key:"
+      echo "  export GEMINI_API_KEY=\"your_api_key_here\""
+      exit 1
+    fi
+    ;;
+  *)
+    echo "Unsupported LLM_PROVIDER \"$LLM_PROVIDER\". Use \"nova\" or \"gemini\"."
+    exit 1
+    ;;
+esac
 
 if [ -z "$API_KEY" ] || [ "$API_KEY" = "CHANGE_ME_TWELVELABS_API_KEY" ]; then
   echo "TL_API_KEY / API_KEY is not set. Please export TL_API_KEY or edit the script."
@@ -666,7 +779,7 @@ done
 
 
 ########################################
-# 7) BUILD ENRICHED ARRAY & FILTER FOR GEMINI
+# 7) BUILD ENRICHED ARRAY & FILTER FOR LLM SELECTION
 ########################################
 
 if [ ! -s "$ENRICHED_JSONL" ]; then
@@ -674,13 +787,11 @@ if [ ! -s "$ENRICHED_JSONL" ]; then
   exit 1
 fi
 
-# Build a single JSON array from the JSONL file
 ENRICHED_JSON=$(jq -s '.' "$ENRICHED_JSONL")
 TOTAL_ENRICHED=$(echo "$ENRICHED_JSON" | jq 'length')
 echo "Pegasus annotated $TOTAL_ENRICHED segments."
 
-# Filter out pure transitions and segments with non-positive appeal_score
-CANDIDATES_FOR_GEMINI_JSON=$(echo "$ENRICHED_JSON" | jq '
+CANDIDATES_FOR_LLM_JSON=$(echo "$ENRICHED_JSON" | jq '
   map(
     select(
       (.appeal_score // 0) > 0
@@ -689,93 +800,76 @@ CANDIDATES_FOR_GEMINI_JSON=$(echo "$ENRICHED_JSON" | jq '
     )
   )
 ')
-CANDIDATE_COUNT=$(echo "$CANDIDATES_FOR_GEMINI_JSON" | jq 'length')
-echo "After filtering, $CANDIDATE_COUNT candidates remain for Gemini selection."
+CANDIDATE_COUNT=$(echo "$CANDIDATES_FOR_LLM_JSON" | jq 'length')
+echo "After filtering, $CANDIDATE_COUNT candidates remain for LLM selection."
 
 if [ "$CANDIDATE_COUNT" -eq 0 ]; then
   echo "No candidates left after filtering, falling back to all enriched segments."
-  CANDIDATES_FOR_GEMINI_JSON="$ENRICHED_JSON"
+  CANDIDATES_FOR_LLM_JSON="$ENRICHED_JSON"
   CANDIDATE_COUNT="$TOTAL_ENRICHED"
 fi
 
 
 ########################################
-# 8) GEMINI SELECTION – PICK BEST SEGMENTS (~60s)
+# 8) LLM SELECTION – PICK BEST SEGMENTS (~60s)
 ########################################
 
-# Quick sanity check
-if [ -z "${CANDIDATES_FOR_GEMINI_JSON:-}" ] || \
-   [ "$(printf '%s\n' "$CANDIDATES_FOR_GEMINI_JSON" | jq 'length')" -eq 0 ]; then
-  echo "!! Gemini selection: CANDIDATES_FOR_GEMINI_JSON is empty."
+if [ -z "${CANDIDATES_FOR_LLM_JSON:-}" ] || \
+   [ "$(printf '%s\n' "$CANDIDATES_FOR_LLM_JSON" | jq 'length')" -eq 0 ]; then
+  echo "!! LLM selection: CANDIDATES_FOR_LLM_JSON is empty."
   exit 1
 fi
 
-echo "Calling Gemini to pick and order the best segments for a ~60s short..."
+LLM_RESPONSE_TEXT=""
 
-# Build prompt text with the candidate JSON inlined as plain text
-GEMINI_PROMPT=$(build_gemini_selection_prompt "$CANDIDATES_FOR_GEMINI_JSON")
-
-# Build Gemini request body
-GEMINI_REQUEST=$(jq -n --arg text "$GEMINI_PROMPT" '{
-  contents: [
-    {
-      role: "user",
-      parts: [ { text: $text } ]
+case "$LLM_PROVIDER_NORMALIZED" in
+  nova)
+    echo "Calling Nova Pro to pick and order the best segments for a ~60s short..."
+    LLM_RESPONSE_TEXT=$(nova_selection "$CANDIDATES_FOR_LLM_JSON") || {
+      echo "!! Nova Pro selection failed."
+      exit 1
     }
-  ]
-}')
+    ;;
+  gemini)
+    echo "Calling Gemini to pick and order the best segments for a ~60s short..."
+    LLM_RESPONSE_TEXT=$(gemini_selection "$CANDIDATES_FOR_LLM_JSON") || {
+      echo "!! Gemini selection failed."
+      exit 1
+    }
+    ;;
+esac
 
-# Call Gemini API
-GEMINI_RESPONSE=$(
-  curl -s -X POST \
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=$GEMINI_API_KEY" \
-    -H "Content-Type: application/json" \
-    -d "$GEMINI_REQUEST"
-)
-
-# Check for API-level error
-if echo "$GEMINI_RESPONSE" | jq -e 'has("error")' >/dev/null 2>&1; then
-  echo "!! Gemini selection error (API error):"
-  echo "$GEMINI_RESPONSE" | jq '.error'
+if [ -z "$LLM_RESPONSE_TEXT" ]; then
+  echo "!! LLM selection returned empty response."
   exit 1
 fi
 
-# Extract the text returned by Gemini
-GEMINI_TEXT=$(echo "$GEMINI_RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
-
-if [ -z "$GEMINI_TEXT" ]; then
-  echo "!! Gemini selection error: empty response text."
-  exit 1
-fi
-
-# In case Gemini still wraps the JSON in ``` fences, strip them
-GEMINI_TEXT_CLEAN=$(
-  printf '%s\n' "$GEMINI_TEXT" \
-    | sed -e 's/^```json[[:space:]]*//g' \
-          -e 's/^```[[:space:]]*//g' \
-          -e 's/```[[:space:]]*$//g'
-)
-
-# Parse JSON and extract the "segments" array
-FINAL_SEGMENTS_JSON=$(printf '%s\n' "$GEMINI_TEXT_CLEAN" | jq '.segments') || {
-  echo "!! Gemini selection error: could not parse JSON from response."
-  echo "Raw Gemini text was:"
-  echo "$GEMINI_TEXT"
+FINAL_SEGMENTS_JSON=$(printf '%s\n' "$LLM_RESPONSE_TEXT" | jq '.segments') || {
+  echo "!! LLM selection error: could not parse JSON from response."
+  echo "Raw LLM text was:"
+  echo "$LLM_RESPONSE_TEXT"
   exit 1
 }
 
 FINAL_SEG_COUNT=$(printf '%s\n' "$FINAL_SEGMENTS_JSON" | jq 'length')
-echo "Gemini selected $FINAL_SEG_COUNT segments for the ~60s short."
+
+case "$LLM_PROVIDER_NORMALIZED" in
+  nova)
+    echo "Nova selected $FINAL_SEG_COUNT segments for the ~60s short."
+    ;;
+  gemini)
+    echo "Gemini selected $FINAL_SEG_COUNT segments for the ~60s short."
+    ;;
+esac
 
 if [ "$FINAL_SEG_COUNT" -eq 0 ]; then
-  echo "!! Gemini selection returned 0 segments."
+  echo "!! LLM selection returned 0 segments."
   exit 1
 fi
 
 
 ########################################
-# 9) CONVERT GEMINI RESULT INTO ARRAYS
-#    (SEG_TITLES / SEG_STARTS / SEG_ENDS)
+# 9) CONVERT LLM RESULT INTO ARRAYS (SEG_TITLES / SEG_STARTS / SEG_ENDS)
 ########################################
 
 unset SEG_TITLES SEG_STARTS SEG_ENDS SEG_VOICES

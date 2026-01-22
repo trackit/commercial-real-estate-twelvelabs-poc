@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+
+# Uploaded and generated files
+uploads/
+outputs/
+*.mp4
+*.mp3
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Temporary files
+tmp/
+temp/

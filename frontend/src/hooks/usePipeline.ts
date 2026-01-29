@@ -1,7 +1,6 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { api } from '../services/api'
-import { createSSEConnection, SSEConnection } from '../services/sse'
-import type { PipelineConfig, PipelineState, PipelineStep, Segment } from '../types'
+import type { PipelineState, PipelineStep } from '../types'
 
 const initialSteps: PipelineStep[] = [
   { id: 'retrieve', name: 'Retrieve Marengo segments', status: 'pending' },
@@ -14,24 +13,31 @@ const initialSteps: PipelineStep[] = [
   { id: 'concat', name: 'Concatenate final video', status: 'pending' },
 ]
 
-interface SSEUpdate {
-  type: 'step' | 'segment' | 'complete' | 'error' | 'log'
-  step?: {
-    id: string
-    status: 'running' | 'complete' | 'error'
-    progress?: number
-    detail?: string
-  }
-  segment?: Segment
+interface PipelineStatusResponse {
+  executionId: string
+  status: 'running' | 'complete' | 'error' | 'idle'
+  steps: PipelineStep[]
   outputPath?: string
   error?: string
-  message?: string
+}
+
+interface StartPipelineResponse {
+  executionId: string
+  videoId: string
+  status: string
+}
+
+interface PipelineStartConfig {
+  videoId: string
+  voiceId: string
+  agencyName: string
+  streetAddress: string
 }
 
 interface UsePipelineReturn {
   state: PipelineState
   logs: string[]
-  startPipeline: (config: PipelineConfig) => Promise<void>
+  startPipeline: (config: PipelineStartConfig) => Promise<void>
   cancelPipeline: () => void
   reset: () => void
 }
@@ -44,87 +50,90 @@ export function usePipeline(): UsePipelineReturn {
     segments: [],
   })
   const [logs, setLogs] = useState<string[]>([])
-  const sseConnection = useRef<SSEConnection | null>(null)
+  const pollingIntervalRef = useRef<number | null>(null)
+  const executionIdRef = useRef<string | null>(null)
 
-  const startPipeline = useCallback(async (config: PipelineConfig) => {
-    const response = await api.post<{ jobId: string }>('/pipeline/start', config)
+  const pollStatus = useCallback(async () => {
+    if (!executionIdRef.current) return
 
-    if (response.error || !response.data) {
+    try {
+      const response = await api.get<PipelineStatusResponse>(
+        `/pipeline/status/${encodeURIComponent(executionIdRef.current)}`
+      )
+
+      if (response.error || !response.data) {
+        return
+      }
+
+      const { status, steps, outputPath, error } = response.data
+
       setState((prev) => ({
         ...prev,
-        status: 'error',
-        error: response.error?.message || 'Failed to start pipeline',
+        status,
+        steps: steps || prev.steps,
+        outputPath,
+        error,
       }))
-      return
-    }
 
-    const { jobId } = response.data
-    setState((prev) => ({
-      ...prev,
-      jobId,
-      status: 'running',
-      steps: initialSteps.map((s) => ({ ...s, status: 'pending' })),
-      segments: [],
-      error: undefined,
-    }))
-    setLogs([])
-
-    sseConnection.current = createSSEConnection<SSEUpdate>(
-      `/pipeline/progress/${jobId}`,
-      (update) => {
-        if (update.type === 'step' && update.step) {
-          setState((prev) => ({
-            ...prev,
-            steps: prev.steps.map((s) =>
-              s.id === update.step!.id
-                ? {
-                    ...s,
-                    status: update.step!.status,
-                    progress: update.step!.progress,
-                    detail: update.step!.detail,
-                  }
-                : s
-            ),
-          }))
-        } else if (update.type === 'segment' && update.segment) {
-          setState((prev) => ({
-            ...prev,
-            segments: [...prev.segments, update.segment!],
-          }))
-        } else if (update.type === 'complete') {
-          setState((prev) => ({
-            ...prev,
-            status: 'complete',
-            outputPath: update.outputPath,
-          }))
-        } else if (update.type === 'error') {
-          setState((prev) => ({
-            ...prev,
-            status: 'error',
-            error: update.error,
-          }))
-        } else if (update.type === 'log' && update.message) {
-          setLogs((prev) => [...prev, update.message!])
+      if (status === 'complete' || status === 'error') {
+        if (pollingIntervalRef.current) {
+          window.clearInterval(pollingIntervalRef.current)
+          pollingIntervalRef.current = null
         }
-      },
-      (error) => {
+      }
+    } catch (err) {}
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        window.clearInterval(pollingIntervalRef.current)
+      }
+    }
+  }, [])
+
+  const startPipeline = useCallback(
+    async (config: PipelineStartConfig) => {
+      const response = await api.post<StartPipelineResponse>('/pipeline/start', {
+        videoId: config.videoId,
+        voiceId: config.voiceId,
+        agencyName: config.agencyName,
+        streetAddress: config.streetAddress,
+      })
+
+      if (response.error || !response.data) {
         setState((prev) => ({
           ...prev,
           status: 'error',
-          error: error.message,
+          error: response.error?.message || 'Failed to start pipeline',
         }))
-      },
-      () => {
-        sseConnection.current = null
+        return
       }
-    )
-  }, [])
+
+      const { executionId } = response.data
+      executionIdRef.current = executionId
+
+      setState({
+        jobId: executionId,
+        status: 'running',
+        steps: initialSteps.map((s) => ({ ...s, status: 'pending' })),
+        segments: [],
+        error: undefined,
+      })
+      setLogs([`Pipeline started: ${executionId}`])
+
+      pollingIntervalRef.current = window.setInterval(pollStatus, 3000)
+      pollStatus()
+    },
+    [pollStatus]
+  )
 
   const cancelPipeline = useCallback(() => {
-    if (sseConnection.current) {
-      sseConnection.current.close()
-      sseConnection.current = null
+    if (pollingIntervalRef.current) {
+      window.clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
     }
+    executionIdRef.current = null
     setState((prev) => ({
       ...prev,
       status: 'idle',
@@ -132,10 +141,11 @@ export function usePipeline(): UsePipelineReturn {
   }, [])
 
   const reset = useCallback(() => {
-    if (sseConnection.current) {
-      sseConnection.current.close()
-      sseConnection.current = null
+    if (pollingIntervalRef.current) {
+      window.clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
     }
+    executionIdRef.current = null
     setState({
       jobId: '',
       status: 'idle',

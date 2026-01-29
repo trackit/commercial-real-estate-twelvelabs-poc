@@ -10,60 +10,43 @@ export interface ApiResponse<T> {
 }
 
 export interface ConfigStatus {
-  twelvelabs: boolean
-  gemini: boolean
-  elevenlabs: boolean
   aws: boolean
+  elevenlabs: boolean
 }
 
-export interface TwelveLabsIndex {
-  id: string
-  name: string
-  videoCount: number
-  createdAt: string
-}
-
-export interface TwelveLabsVideo {
+export interface Video {
   id: string
   filename: string
-  duration: number
+  s3Uri: string
+  size: number
+  status: 'ready' | 'processing' | 'error'
   createdAt: string
-  hlsUrl?: string
+  duration?: number
 }
 
-export interface ElevenLabsVoice {
+export interface PollyVoice {
   id: string
   name: string
-  previewUrl?: string
-  labels: {
-    accent?: string
-    gender?: string
-    age?: string
-    description?: string
-  }
-}
-
-export interface VideoStatus {
-  id: string
-  indexId: string
-  status: 'pending' | 'indexing' | 'ready' | 'failed'
-  progress?: number
-  error?: string
+  gender: 'Male' | 'Female'
+  accent: string
 }
 
 export interface PipelineConfig {
   videoId: string
-  indexId: string
-  videoPath: string
-  outputPath: string
-  ttsProvider: 'polly' | 'elevenlabs'
   voiceId: string
-  llmProvider: 'nova' | 'gemini'
-  agencyName?: string
-  streetName?: string
+  agencyName: string
+  streetAddress: string
 }
 
 export type PipelineStepStatus = 'pending' | 'running' | 'complete' | 'error'
+
+export interface MapProgress {
+  total: number
+  succeeded: number
+  inProgress: number
+  queued: number
+  failed: number
+}
 
 export interface PipelineStep {
   id: string
@@ -71,6 +54,7 @@ export interface PipelineStep {
   status: PipelineStepStatus
   progress?: number
   detail?: string
+  mapProgress?: MapProgress
 }
 
 export interface Segment {

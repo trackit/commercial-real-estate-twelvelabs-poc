@@ -109,36 +109,16 @@ export function ApiSettings() {
     }
   }
 
-  const apiKeys: { provider: 'twelvelabs' | 'gemini' | 'elevenlabs'; label: string; hint?: string }[] = [
-    { provider: 'twelvelabs', label: 'TwelveLabs API Key' },
-    { provider: 'gemini', label: 'Google Cloud API Key', hint: 'Used for Gemini AI and Google Maps/Places APIs' },
-    { provider: 'elevenlabs', label: 'ElevenLabs API Key' },
-  ]
-
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-bold text-text-primary">API Configuration</h2>
         <p className="text-text-secondary mt-1">
-          Configure your API keys to enable video processing and location insights.
+          Configure your API settings for video processing.
         </p>
       </div>
 
       <div className="space-y-4">
-        {apiKeys.map(({ provider, label, hint }) => (
-          <ApiKeyField
-            key={provider}
-            label={label}
-            value={config[provider]}
-            isConfigured={status[provider]}
-            testResult={testResults[provider]}
-            hint={hint}
-            onChange={(value) => updateConfig(provider, value)}
-            onClearTestResult={() => setTestResult(provider, null)}
-            onTest={() => testConnection(provider, config[provider])}
-          />
-        ))}
-
         <Card variant="elevated" className="p-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 space-y-3">
@@ -147,12 +127,12 @@ export function ApiSettings() {
                   <Cloud className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-text-primary">AWS (Bedrock / Polly)</h4>
+                  <h4 className="font-medium text-text-primary">Backend API</h4>
                   <div className="flex items-center gap-2 mt-1">
                     {testResults.aws === false ? (
                       <Badge variant="error" size="sm">
                         <XCircle className="w-3 h-3 mr-1" />
-                        Not configured
+                        Not connected
                       </Badge>
                     ) : testResults.aws === true ? (
                       <Badge variant="success" size="sm">
@@ -166,11 +146,23 @@ export function ApiSettings() {
                 </div>
               </div>
               <p className="text-sm text-text-muted">
-                AWS credentials are configured via the AWS CLI on the server. Used for Nova Pro (Bedrock) and AWS Polly TTS.
+                AWS-powered backend with Marengo/Pegasus video analysis and Nova Pro LLM.
+                Set <code className="bg-surface-secondary px-1 rounded">VITE_API_BASE_URL</code> in your environment.
               </p>
             </div>
           </div>
         </Card>
+
+        <ApiKeyField
+          label="ElevenLabs API Key"
+          value={config.elevenlabs}
+          isConfigured={status.elevenlabs}
+          testResult={testResults.elevenlabs}
+          hint="Optional: For premium voice synthesis. AWS Polly is used as fallback."
+          onChange={(value) => updateConfig('elevenlabs', value)}
+          onClearTestResult={() => setTestResult('elevenlabs', null)}
+          onTest={() => testConnection('elevenlabs', config.elevenlabs)}
+        />
       </div>
 
       <Card variant="glass" className="p-4">

@@ -1,0 +1,195 @@
+{
+  "Comment": "Video Processing Pipeline with TwelveLabs Marengo and Pegasus on Bedrock",
+  "StartAt": "StartMarengoEmbedding",
+  "States": {
+    "StartMarengoEmbedding": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "Parameters": {
+        "FunctionName": "${StartMarengoLambdaArn}",
+        "Payload": {
+          "taskToken.$": "$$.Task.Token",
+          "videoS3Uri.$": "$.videoS3Uri",
+          "outputS3Uri.$": "States.Format('s3://{}/embeddings/{}/', $.bucketName, $.videoId)",
+          "videoId.$": "$.videoId"
+        }
+      },
+      "ResultPath": "$.marengoResult",
+      "TimeoutSeconds": 1800,
+      "Next": "StoreEmbeddings"
+    },
+    "StoreEmbeddings": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${StoreEmbeddingsLambdaArn}",
+        "Payload": {
+          "videoId.$": "$.videoId",
+          "embeddingsS3Uri.$": "$.marengoResult.outputS3Uri"
+        }
+      },
+      "ResultSelector": {
+        "segments.$": "$.Payload.segments",
+        "videoId.$": "$.Payload.videoId"
+      },
+      "ResultPath": "$.embeddingsResult",
+      "Next": "AnalyzeSegmentsMap"
+    },
+    "AnalyzeSegmentsMap": {
+      "Type": "Map",
+      "ItemsPath": "$.embeddingsResult.segments",
+      "MaxConcurrency": 5,
+      "ItemSelector": {
+        "videoS3Uri.$": "$.videoS3Uri",
+        "bucketName.$": "$.bucketName",
+        "videoId.$": "$.videoId",
+        "segment.$": "$$.Map.Item.Value",
+        "segmentIndex.$": "$$.Map.Item.Index"
+      },
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "INLINE"
+        },
+        "StartAt": "StartPegasusAnalysis",
+        "States": {
+          "StartPegasusAnalysis": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+            "Parameters": {
+              "FunctionName": "${StartPegasusAnalysisLambdaArn}",
+              "Payload": {
+                "taskToken.$": "$$.Task.Token",
+                "videoS3Uri.$": "$.videoS3Uri",
+                "segment.$": "$.segment",
+                "outputS3Uri.$": "States.Format('s3://{}/analysis/{}/{}.json', $.bucketName, $.videoId, $.segmentIndex)"
+              }
+            },
+            "TimeoutSeconds": 900,
+            "End": true
+          }
+        }
+      },
+      "ResultPath": "$.analyses",
+      "Next": "SelectSegments"
+    },
+    "SelectSegments": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${SelectSegmentsLambdaArn}",
+        "Payload": {
+          "analyses.$": "$.analyses",
+          "videoS3Uri.$": "$.videoS3Uri",
+          "targetDuration": 60
+        }
+      },
+      "ResultSelector": {
+        "selectedSegments.$": "$.Payload.selectedSegments",
+        "totalDuration.$": "$.Payload.totalDuration",
+        "videoS3Uri.$": "$.Payload.videoS3Uri"
+      },
+      "ResultPath": "$.selectionResult",
+      "Next": "CheckSelectedSegments"
+    },
+    "CheckSelectedSegments": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.selectionResult.totalDuration",
+          "NumericEquals": 0,
+          "Next": "NoSegmentsResult"
+        }
+      ],
+      "Default": "GenerateVoiceoverMap"
+    },
+    "NoSegmentsResult": {
+      "Type": "Pass",
+      "Result": {
+        "status": "completed",
+        "message": "No valid segments were selected for the video",
+        "segmentCount": 0
+      },
+      "End": true
+    },
+    "GenerateVoiceoverMap": {
+      "Type": "Map",
+      "ItemsPath": "$.selectionResult.selectedSegments",
+      "MaxConcurrency": 1,
+      "ItemSelector": {
+        "videoS3Uri.$": "$.videoS3Uri",
+        "bucketName.$": "$.bucketName",
+        "videoId.$": "$.videoId",
+        "agencyName.$": "$.agencyName",
+        "streetAddress.$": "$.streetAddress",
+        "segment.$": "$$.Map.Item.Value",
+        "segmentIndex.$": "$$.Map.Item.Index"
+      },
+      "ItemProcessor": {
+        "ProcessorConfig": {
+          "Mode": "INLINE"
+        },
+        "StartAt": "StartPegasusVoiceover",
+        "States": {
+          "StartPegasusVoiceover": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+            "Parameters": {
+              "FunctionName": "${StartPegasusVoiceoverLambdaArn}",
+              "Payload": {
+                "taskToken.$": "$$.Task.Token",
+                "videoS3Uri.$": "$.videoS3Uri",
+                "segment.$": "$.segment",
+                "agencyName.$": "$.agencyName",
+                "streetAddress.$": "$.streetAddress",
+                "outputS3Uri.$": "States.Format('s3://{}/voiceover/{}/{}.json', $.bucketName, $.videoId, $.segmentIndex)"
+              }
+            },
+            "TimeoutSeconds": 300,
+            "End": true
+          }
+        }
+      },
+      "ResultPath": "$.voiceoverResult",
+      "Next": "SynthesizeAudio"
+    },
+    "SynthesizeAudio": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${SynthesizeAudioLambdaArn}",
+        "Payload": {
+          "segments.$": "$.voiceoverResult",
+          "videoId.$": "$.videoId",
+          "videoS3Uri.$": "$.videoS3Uri",
+          "voiceId.$": "$.voiceId"
+        }
+      },
+      "ResultSelector": {
+        "segmentsWithAudio.$": "$.Payload.segmentsWithAudio",
+        "videoId.$": "$.Payload.videoId",
+        "videoS3Uri.$": "$.Payload.videoS3Uri"
+      },
+      "ResultPath": "$.audioResult",
+      "Next": "ProcessVideo"
+    },
+    "ProcessVideo": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ProcessVideoLambdaArn}",
+        "Payload": {
+          "videoS3Uri.$": "$.videoS3Uri",
+          "segments.$": "$.audioResult.segmentsWithAudio",
+          "videoId.$": "$.videoId"
+        }
+      },
+      "ResultSelector": {
+        "finalVideoS3Uri.$": "$.Payload.finalVideoS3Uri",
+        "totalDuration.$": "$.Payload.totalDuration",
+        "segmentCount.$": "$.Payload.segmentCount",
+        "videoId.$": "$.Payload.videoId"
+      },
+      "End": true
+    }
+  }
+}

@@ -29,8 +29,8 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
+    const url = `${this.baseUrl}${endpoint}`
     try {
-      const url = `${this.baseUrl}${endpoint}`
       const response = await fetch(url, {
         ...options,
         headers: {

@@ -11,17 +11,3 @@ export function formatFileSize(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
-
-export function formatTimeRange(start: number, end: number): string {
-  return `${formatDuration(start)} - ${formatDuration(end)}`
-}
-
-export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text
-  return text.slice(0, maxLength - 3) + '...'
-}
-
-export function maskApiKey(key: string): string {
-  if (key.length <= 8) return '••••••••'
-  return key.slice(0, 4) + '••••••••' + key.slice(-4)
-}

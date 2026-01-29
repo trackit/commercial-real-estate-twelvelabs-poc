@@ -3,14 +3,10 @@ import { api } from '../services/api'
 import type { ConfigStatus } from '../types'
 
 interface ApiConfig {
-  twelvelabs: string
-  gemini: string
   elevenlabs: string
 }
 
 type TestResults = {
-  twelvelabs: boolean | null
-  gemini: boolean | null
   elevenlabs: boolean | null
   aws: boolean | null
 }
@@ -22,8 +18,8 @@ interface ApiConfigContextType {
   isLoading: boolean
   updateConfig: (key: keyof ApiConfig, value: string) => void
   saveConfig: () => Promise<boolean>
-  testConnection: (key: keyof ApiConfig, apiKey?: string) => Promise<boolean>
-  setTestResult: (key: keyof ApiConfig, result: boolean | null) => void
+  testConnection: (key: keyof ApiConfig | 'aws', apiKey?: string) => Promise<boolean>
+  setTestResult: (key: keyof ApiConfig | 'aws', result: boolean | null) => void
   refreshStatus: () => Promise<void>
 }
 
@@ -32,8 +28,6 @@ const ApiConfigContext = createContext<ApiConfigContextType | null>(null)
 const STORAGE_KEY = 'cre-api-config'
 
 const defaultTestResults: TestResults = {
-  twelvelabs: null,
-  gemini: null,
   elevenlabs: null,
   aws: null,
 }
@@ -44,23 +38,19 @@ function loadFromStorage(): ApiConfig {
     if (stored) {
       const parsed = JSON.parse(stored)
       return {
-        twelvelabs: parsed.twelvelabs || '',
-        gemini: parsed.gemini || '',
         elevenlabs: parsed.elevenlabs || '',
       }
     }
   } catch {}
-  return { twelvelabs: '', gemini: '', elevenlabs: '' }
+  return { elevenlabs: '' }
 }
 
 function saveToStorage(config: ApiConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
 }
 
-function computeStatus(config: ApiConfig, awsStatus: boolean = false): ConfigStatus {
+function computeStatus(config: ApiConfig, awsStatus: boolean = true): ConfigStatus {
   return {
-    twelvelabs: !!config.twelvelabs,
-    gemini: !!config.gemini,
     elevenlabs: !!config.elevenlabs,
     aws: awsStatus,
   }
@@ -74,15 +64,22 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   const testConnection = useCallback(
     async (key: keyof ApiConfig | 'aws', apiKey?: string): Promise<boolean> => {
-      const response = await api.post<{ valid: boolean }>('/config/test', {
-        provider: key,
-        apiKey: key === 'aws' ? undefined : apiKey,
-      })
-      const result = response.data?.valid ?? false
-      setTestResults((prev) => ({ ...prev, [key]: result }))
       if (key === 'aws') {
-        setStatus((prev) => ({ ...prev, aws: result }))
+        try {
+          const response = await api.get('/videos')
+          const result = !response.error
+          setTestResults((prev) => ({ ...prev, aws: result }))
+          setStatus((prev) => ({ ...prev, aws: result }))
+          return result
+        } catch {
+          setTestResults((prev) => ({ ...prev, aws: false }))
+          setStatus((prev) => ({ ...prev, aws: false }))
+          return false
+        }
       }
+      
+      const result = !!apiKey && apiKey.length > 10
+      setTestResults((prev) => ({ ...prev, [key]: result }))
       return result
     },
     []
@@ -100,15 +97,11 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       const stored = loadFromStorage()
       setConfig(stored)
-      const currentStatus = computeStatus(stored)
-      setStatus(currentStatus)
       
-      const providers: (keyof ApiConfig)[] = ['twelvelabs', 'gemini', 'elevenlabs']
-      const toTest = providers.filter((p) => currentStatus[p])
-      await Promise.all([
-        ...toTest.map((p) => testConnection(p, stored[p])),
-        testConnection('aws'),
-      ])
+      await testConnection('aws')
+      if (stored.elevenlabs) {
+        await testConnection('elevenlabs', stored.elevenlabs)
+      }
       
       setIsLoading(false)
     }
@@ -119,7 +112,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     setConfig((prev) => ({ ...prev, [key]: value }))
   }, [])
 
-  const setTestResult = useCallback((key: keyof ApiConfig, result: boolean | null) => {
+  const setTestResult = useCallback((key: keyof ApiConfig | 'aws', result: boolean | null) => {
     setTestResults((prev) => ({ ...prev, [key]: result }))
   }, [])
 

@@ -1,27 +1,81 @@
-import { Download, Play } from 'lucide-react'
-import { useState } from 'react'
-import { Card, Button } from '../ui'
+import { Download, Loader2, Play } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { env } from '../../config/env'
+import { Button, Card } from '../ui'
 
 interface VideoPreviewProps {
   outputPath?: string
 }
 
+function extractVideoId(s3Uri: string): string | null {
+  const match = s3Uri.match(/s3:\/\/[^/]+\/([^/]+)\/output\/final\.mp4/)
+  return match ? match[1] : null
+}
+
 export function VideoPreview({ outputPath }: VideoPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false)
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!outputPath) return null
+  const videoId = outputPath ? extractVideoId(outputPath) : null
 
-  const filename = outputPath.split('/').pop()
-  const videoUrl = `${env.apiBaseUrl}/output/${filename}`
+  useEffect(() => {
+    if (!videoId) {
+      setLoading(false)
+      return
+    }
+
+    const fetchPresignedUrl = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await fetch(`${env.apiBaseUrl}/output/${videoId}`)
+        if (!response.ok) {
+          throw new Error('Failed to get video URL')
+        }
+        const data = await response.json()
+        setVideoUrl(data.downloadUrl)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load video')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPresignedUrl()
+  }, [videoId])
+
+  if (!outputPath || !videoId) return null
 
   const handleDownload = () => {
+    if (!videoUrl) return
     const link = document.createElement('a')
     link.href = videoUrl
-    link.download = filename || 'processed-video.mp4'
+    link.download = 'final.mp4'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+  }
+
+  if (loading) {
+    return (
+      <Card variant="elevated" className="overflow-hidden">
+        <div className="aspect-video bg-black flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-text-secondary animate-spin" />
+        </div>
+      </Card>
+    )
+  }
+
+  if (error || !videoUrl) {
+    return (
+      <Card variant="elevated" className="overflow-hidden">
+        <div className="aspect-video bg-black flex items-center justify-center">
+          <p className="text-text-secondary">{error || 'Video not available'}</p>
+        </div>
+      </Card>
+    )
   }
 
   return (
@@ -43,7 +97,7 @@ export function VideoPreview({ outputPath }: VideoPreviewProps) {
             >
               <Play className="w-8 h-8 text-background ml-1" fill="currentColor" />
             </button>
-            <p className="mt-4 text-text-secondary">{filename}</p>
+            <p className="mt-4 text-text-secondary">final.mp4</p>
           </div>
         )}
       </div>

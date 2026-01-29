@@ -1,13 +1,14 @@
-export function isValidApiKey(key: string): boolean {
-  return key.length >= 10
-}
-
 export function isValidVideoFile(file: File): { valid: boolean; error?: string } {
-  const validTypes = ['video/mp4', 'video/quicktime', 'video/x-m4v']
+  const validTypes = ['video/mp4', 'video/quicktime', 'video/x-m4v', 'video/x-matroska']
+  const validExtensions = ['.mp4', '.mov', '.m4v', '.mkv']
   const maxSize = 2 * 1024 * 1024 * 1024
 
-  if (!validTypes.includes(file.type)) {
-    return { valid: false, error: 'Invalid file type. Please upload MP4 or MOV files.' }
+  const extension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
+  const hasValidType = validTypes.includes(file.type)
+  const hasValidExtension = validExtensions.includes(extension)
+
+  if (!hasValidType && !hasValidExtension) {
+    return { valid: false, error: 'Invalid file type. Please upload MP4, MOV, or MKV files.' }
   }
 
   if (file.size > maxSize) {
@@ -15,8 +16,4 @@ export function isValidVideoFile(file: File): { valid: boolean; error?: string }
   }
 
   return { valid: true }
-}
-
-export function isValidAddress(address: string): boolean {
-  return address.trim().length >= 5
 }

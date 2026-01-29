@@ -1,45 +1,26 @@
 import { useState, useCallback } from 'react'
 import { api } from '../services/api'
-import type { TwelveLabsIndex, TwelveLabsVideo, ElevenLabsVoice } from '../types'
+import type { Video, PollyVoice } from '../types'
 
 interface UsePipelineConfigReturn {
-  indexes: TwelveLabsIndex[]
-  videos: TwelveLabsVideo[]
-  voices: ElevenLabsVoice[]
-  isLoadingIndexes: boolean
+  videos: Video[]
+  voices: PollyVoice[]
   isLoadingVideos: boolean
   isLoadingVoices: boolean
-  fetchIndexes: () => Promise<void>
-  fetchVideos: (indexId: string) => Promise<void>
+  fetchVideos: () => Promise<void>
   fetchVoices: () => Promise<void>
-  resolveVideoPath: (indexId: string, videoId: string) => Promise<{ path: string | null; error?: string }>
 }
 
 export function usePipelineConfig(): UsePipelineConfigReturn {
-  const [indexes, setIndexes] = useState<TwelveLabsIndex[]>([])
-  const [videos, setVideos] = useState<TwelveLabsVideo[]>([])
-  const [voices, setVoices] = useState<ElevenLabsVoice[]>([])
-  const [isLoadingIndexes, setIsLoadingIndexes] = useState(false)
+  const [videos, setVideos] = useState<Video[]>([])
+  const [voices, setVoices] = useState<PollyVoice[]>([])
   const [isLoadingVideos, setIsLoadingVideos] = useState(false)
   const [isLoadingVoices, setIsLoadingVoices] = useState(false)
 
-  const fetchIndexes = useCallback(async () => {
-    setIsLoadingIndexes(true)
-    try {
-      const response = await api.get<TwelveLabsIndex[]>('/indexes')
-      if (response.data) {
-        setIndexes(response.data)
-      }
-    } finally {
-      setIsLoadingIndexes(false)
-    }
-  }, [])
-
-  const fetchVideos = useCallback(async (indexId: string) => {
+  const fetchVideos = useCallback(async () => {
     setIsLoadingVideos(true)
-    setVideos([])
     try {
-      const response = await api.get<TwelveLabsVideo[]>(`/indexes/${indexId}/videos`)
+      const response = await api.get<Video[]>('/videos')
       if (response.data) {
         setVideos(response.data)
       }
@@ -51,33 +32,23 @@ export function usePipelineConfig(): UsePipelineConfigReturn {
   const fetchVoices = useCallback(async () => {
     setIsLoadingVoices(true)
     try {
-      const response = await api.get<ElevenLabsVoice[]>('/voices')
+      const response = await api.get<PollyVoice[]>('/voices')
       if (response.data) {
         setVoices(response.data)
       }
+    } catch {
+      setVoices([])
     } finally {
       setIsLoadingVoices(false)
     }
   }, [])
 
-  const resolveVideoPath = useCallback(async (indexId: string, videoId: string): Promise<{ path: string | null; error?: string }> => {
-    const response = await api.get<{ path: string; source: string }>(`/videos/${indexId}/${videoId}/path`)
-    if (response.data) {
-      return { path: response.data.path }
-    }
-    return { path: null, error: response.error?.message }
-  }, [])
-
   return {
-    indexes,
     videos,
     voices,
-    isLoadingIndexes,
     isLoadingVideos,
     isLoadingVoices,
-    fetchIndexes,
     fetchVideos,
     fetchVoices,
-    resolveVideoPath,
   }
 }

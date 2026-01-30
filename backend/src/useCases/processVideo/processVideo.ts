@@ -83,14 +83,6 @@ export class ProcessVideoUseCase {
   }
 
   private findIntroIndex(segments: SegmentWithAudio[]): number {
-    const introPatterns = [/exterior/i, /front/i, /outdoor/i]
-
-    for (let i = 0; i < segments.length; i++) {
-      if (introPatterns.some((pattern) => pattern.test(segments[i].title))) {
-        return i
-      }
-    }
-
     return 0
   }
 

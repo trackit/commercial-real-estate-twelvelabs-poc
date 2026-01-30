@@ -21,7 +21,7 @@ const STATE_TO_STEP_MAP: Record<string, string[]> = {
   SelectSegments: ['filter', 'select'],
   GenerateVoiceoverMap: ['voiceover'],
   SynthesizeAudio: ['audio'],
-  ProcessVideo: ['render', 'concat'],
+  ProcessVideo: ['render'],
 }
 
 const MAP_STATE_TO_STEP: Record<string, string> = {
@@ -53,8 +53,7 @@ const PIPELINE_STEPS: PipelineStep[] = [
   { id: 'select', name: 'LLM segment selection', status: 'pending' },
   { id: 'voiceover', name: 'Generate voiceover scripts', status: 'pending' },
   { id: 'audio', name: 'Synthesize audio', status: 'pending' },
-  { id: 'render', name: 'Render video segments', status: 'pending' },
-  { id: 'concat', name: 'Concatenate final video', status: 'pending' },
+  { id: 'render', name: 'Process & render video', status: 'pending' },
 ]
 
 async function getAllExecutionHistory(executionArn: string): Promise<HistoryEvent[]> {

@@ -119,16 +119,8 @@ export class VideoProcessor {
         '0',
         '-i',
         listFile,
-        '-c:v',
-        'libx264',
-        '-preset',
-        'veryfast',
-        '-crf',
-        '18',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
+        '-c',
+        'copy',
         '-movflags',
         '+faststart',
         '-y',
@@ -184,7 +176,7 @@ export class VideoProcessor {
 
     const sanitizedTitle = this.sanitizeText(title).toUpperCase()
 
-    const roomTextFilter = `drawbox=x=w-iw:y=h-200:w=iw:h=200:color=black@0.75:t=fill,drawtext=fontfile=${this.fontPath}:text='${sanitizedTitle}':x=w-text_w-50:y=h-text_h-50:fontsize=140:fontcolor=white:bordercolor=black:borderw=8:shadowx=5:shadowy=5`
+    const roomTextFilter = `drawtext=fontfile=${this.fontPath}:text='${sanitizedTitle}':x=w-text_w-50:y=h-text_h-50:fontsize=48:fontcolor=white:bordercolor=black:borderw=4:shadowx=3:shadowy=3`
 
     if (isIntro && agencyLabel && streetLabel) {
       const sanitizedAgency = this.sanitizeText(agencyLabel)

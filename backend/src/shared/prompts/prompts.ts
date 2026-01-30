@@ -105,7 +105,7 @@ Select only the strongest segments and order them so that the tour feels natural
 
 Rules:
 - Total sum of durations of selected segments should be close to 60 seconds (between 50 and 70 seconds is acceptable).
-- Always start with the best available exterior / approach segment if any.
+- CRITICAL: The FIRST segment MUST be an exterior / approach / outdoor segment. This is mandatory for the tour introduction.
 - Then show entry / foyer.
 - Then the most attractive main living areas (living / dining).
 - Then the best kitchen views.

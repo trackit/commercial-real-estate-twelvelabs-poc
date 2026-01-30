@@ -18,7 +18,7 @@ resource "aws_lambda_function" "start_marengo" {
     variables = {
       AWS_ACCOUNT_ID   = local.account_id
       S3_BUCKET_NAME   = aws_s3_bucket.video.id
-      VECTOR_INDEX     = var.vector_index_name
+      VECTOR_INDEX     = local.vector_index_name
       TASK_TOKEN_TABLE = aws_dynamodb_table.task_tokens.name
     }
   }
@@ -65,7 +65,7 @@ resource "aws_lambda_function" "store_embeddings" {
     variables = {
       AWS_ACCOUNT_ID = local.account_id
       S3_BUCKET_NAME = aws_s3_bucket.video.id
-      VECTOR_INDEX   = var.vector_index_name
+      VECTOR_INDEX   = local.vector_index_name
     }
   }
 
@@ -154,7 +154,6 @@ resource "aws_lambda_function" "synthesize_audio" {
   environment {
     variables = {
       S3_BUCKET_NAME = aws_s3_bucket.video.id
-      POLLY_VOICE_ID = var.polly_voice_id
     }
   }
 
@@ -178,7 +177,7 @@ resource "aws_lambda_function" "process_video" {
   environment {
     variables = {
       S3_BUCKET_NAME = aws_s3_bucket.video.id
-      VECTOR_INDEX   = var.vector_index_name
+      VECTOR_INDEX   = local.vector_index_name
     }
   }
 

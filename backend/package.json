@@ -7,6 +7,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "format": "prettier --write \"src/**/*.ts\"",
     "build": "esbuild src/handlers/*/index.ts src/handlers/api/*.ts --bundle --platform=node --target=node20 --outdir=dist/handlers --format=esm --packages=external && echo '{\"type\":\"module\"}' > dist/package.json",
     "deploy": "npm run build && cd ../terraform && terraform apply -auto-approve"
   },
@@ -25,7 +26,12 @@
     "@types/aws-lambda": "^8.10.145",
     "@types/node": "^22.9.0",
     "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
     "esbuild": "^0.24.0",
+    "eslint": "^9.15.0",
+    "globals": "^17.2.0",
+    "prettier": "^3.4.1",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.0"

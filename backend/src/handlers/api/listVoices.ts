@@ -1,16 +1,16 @@
-import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
+import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type,Authorization',
   'Access-Control-Allow-Methods': 'GET,OPTIONS',
-};
+}
 
 interface PollyVoice {
-  id: string;
-  name: string;
-  gender: 'Male' | 'Female';
-  accent: string;
+  id: string
+  name: string
+  gender: 'Male' | 'Female'
+  accent: string
 }
 
 const POLLY_VOICES: PollyVoice[] = [
@@ -22,16 +22,16 @@ const POLLY_VOICES: PollyVoice[] = [
   { id: 'Brian', name: 'Brian', gender: 'Male', accent: 'British English' },
   { id: 'Olivia', name: 'Olivia', gender: 'Female', accent: 'Australian English' },
   { id: 'Aria', name: 'Aria', gender: 'Female', accent: 'New Zealand English' },
-];
+]
 
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: corsHeaders, body: '' };
+    return { statusCode: 200, headers: corsHeaders, body: '' }
   }
 
   return {
     statusCode: 200,
     headers: corsHeaders,
     body: JSON.stringify(POLLY_VOICES),
-  };
-};
+  }
+}

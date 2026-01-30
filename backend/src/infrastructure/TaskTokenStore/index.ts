@@ -1,1 +1,1 @@
-export { DynamoTaskTokenStore } from './TaskTokenStore';
+export { DynamoTaskTokenStore } from './TaskTokenStore'

@@ -1,1 +1,1 @@
-export { handler } from './synthesizeAudio';
+export { handler } from './synthesizeAudio'

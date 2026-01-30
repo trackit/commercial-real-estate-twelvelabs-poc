@@ -1,2 +1,2 @@
-export { SelectSegmentsUseCase } from './selectSegments';
-export type { SelectSegmentsInput, SelectSegmentsOutput } from './selectSegments';
+export { SelectSegmentsUseCase } from './selectSegments'
+export type { SelectSegmentsInput, SelectSegmentsOutput } from './selectSegments'

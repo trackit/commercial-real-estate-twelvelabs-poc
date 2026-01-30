@@ -1,1 +1,1 @@
-export { handler } from './selectSegments';
+export { handler } from './selectSegments'

@@ -14,7 +14,9 @@ function getApiHeaders(): Record<string, string> {
       if (config.elevenlabs) headers['x-elevenlabs-key'] = config.elevenlabs
       return headers
     }
-  } catch {}
+  } catch {
+    return {}
+  }
   return {}
 }
 
@@ -25,10 +27,7 @@ class ApiClient {
     this.baseUrl = baseUrl
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`
     try {
       const response = await fetch(url, {

@@ -82,7 +82,12 @@ export function usePipeline(): UsePipelineReturn {
           pollingIntervalRef.current = null
         }
       }
-    } catch (err) {}
+    } catch {
+      if (pollingIntervalRef.current) {
+        window.clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+    }
   }, [])
 
   useEffect(() => {

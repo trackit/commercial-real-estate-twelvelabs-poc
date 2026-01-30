@@ -1,5 +1,4 @@
 resource "aws_apigatewayv2_api" "video_pipeline" {
-  count         = var.enable_api_gateway ? 1 : 0
   name          = "${local.name_prefix}-api"
   protocol_type = "HTTP"
 
@@ -16,13 +15,12 @@ resource "aws_apigatewayv2_api" "video_pipeline" {
 }
 
 resource "aws_apigatewayv2_stage" "default" {
-  count       = var.enable_api_gateway ? 1 : 0
-  api_id      = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id      = aws_apigatewayv2_api.video_pipeline.id
   name        = "$default"
   auto_deploy = true
 
   access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.api_gateway_logs[0].arn
+    destination_arn = aws_cloudwatch_log_group.api_gateway_logs.arn
     format = jsonencode({
       requestId        = "$context.requestId"
       ip               = "$context.identity.sourceIp"
@@ -41,7 +39,6 @@ resource "aws_apigatewayv2_stage" "default" {
 }
 
 resource "aws_cloudwatch_log_group" "api_gateway_logs" {
-  count             = var.enable_api_gateway ? 1 : 0
   name              = "/aws/apigateway/${local.name_prefix}"
   retention_in_days = 14
 
@@ -51,7 +48,6 @@ resource "aws_cloudwatch_log_group" "api_gateway_logs" {
 }
 
 resource "aws_lambda_function" "api_get_presigned_url" {
-  count            = var.enable_api_gateway ? 1 : 0
   function_name    = "${local.name_prefix}-api-presigned-url"
   runtime          = "nodejs20.x"
   handler          = "handlers/api/getPresignedUrl.handler"
@@ -73,7 +69,6 @@ resource "aws_lambda_function" "api_get_presigned_url" {
 }
 
 resource "aws_lambda_function" "api_confirm_upload" {
-  count            = var.enable_api_gateway ? 1 : 0
   function_name    = "${local.name_prefix}-api-confirm-upload"
   runtime          = "nodejs20.x"
   handler          = "handlers/api/confirmUpload.handler"
@@ -96,7 +91,6 @@ resource "aws_lambda_function" "api_confirm_upload" {
 }
 
 resource "aws_lambda_function" "api_list_videos" {
-  count            = var.enable_api_gateway ? 1 : 0
   function_name    = "${local.name_prefix}-api-list-videos"
   runtime          = "nodejs20.x"
   handler          = "handlers/api/listVideos.handler"
@@ -118,7 +112,6 @@ resource "aws_lambda_function" "api_list_videos" {
 }
 
 resource "aws_lambda_function" "api_get_video" {
-  count            = var.enable_api_gateway ? 1 : 0
   function_name    = "${local.name_prefix}-api-get-video"
   runtime          = "nodejs20.x"
   handler          = "handlers/api/getVideo.handler"
@@ -140,7 +133,6 @@ resource "aws_lambda_function" "api_get_video" {
 }
 
 resource "aws_lambda_function" "api_start_pipeline" {
-  count            = var.enable_api_gateway ? 1 : 0
   function_name    = "${local.name_prefix}-api-start-pipeline"
   runtime          = "nodejs20.x"
   handler          = "handlers/api/startPipeline.handler"
@@ -164,7 +156,6 @@ resource "aws_lambda_function" "api_start_pipeline" {
 }
 
 resource "aws_lambda_function" "api_get_pipeline_status" {
-  count            = var.enable_api_gateway ? 1 : 0
   function_name    = "${local.name_prefix}-api-pipeline-status"
   runtime          = "nodejs20.x"
   handler          = "handlers/api/getPipelineStatus.handler"
@@ -186,7 +177,6 @@ resource "aws_lambda_function" "api_get_pipeline_status" {
 }
 
 resource "aws_lambda_function" "api_list_voices" {
-  count            = var.enable_api_gateway ? 1 : 0
   function_name    = "${local.name_prefix}-api-list-voices"
   runtime          = "nodejs20.x"
   handler          = "handlers/api/listVoices.handler"
@@ -202,7 +192,6 @@ resource "aws_lambda_function" "api_list_voices" {
 }
 
 resource "aws_lambda_function" "api_get_output_video" {
-  count            = var.enable_api_gateway ? 1 : 0
   function_name    = "${local.name_prefix}-api-get-output-video"
   runtime          = "nodejs20.x"
   handler          = "handlers/api/getOutputVideo.handler"
@@ -224,7 +213,6 @@ resource "aws_lambda_function" "api_get_output_video" {
 }
 
 resource "aws_lambda_function" "api_get_insights" {
-  count            = var.enable_api_gateway ? 1 : 0
   function_name    = "${local.name_prefix}-api-get-insights"
   runtime          = "nodejs20.x"
   handler          = "handlers/api/getInsights.handler"
@@ -240,217 +228,190 @@ resource "aws_lambda_function" "api_get_insights" {
 }
 
 resource "aws_apigatewayv2_integration" "get_presigned_url" {
-  count              = var.enable_api_gateway ? 1 : 0
-  api_id             = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id             = aws_apigatewayv2_api.video_pipeline.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.api_get_presigned_url[0].invoke_arn
+  integration_uri    = aws_lambda_function.api_get_presigned_url.invoke_arn
   integration_method = "POST"
 }
 
 resource "aws_apigatewayv2_integration" "confirm_upload" {
-  count              = var.enable_api_gateway ? 1 : 0
-  api_id             = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id             = aws_apigatewayv2_api.video_pipeline.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.api_confirm_upload[0].invoke_arn
+  integration_uri    = aws_lambda_function.api_confirm_upload.invoke_arn
   integration_method = "POST"
 }
 
 resource "aws_apigatewayv2_integration" "list_videos" {
-  count              = var.enable_api_gateway ? 1 : 0
-  api_id             = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id             = aws_apigatewayv2_api.video_pipeline.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.api_list_videos[0].invoke_arn
+  integration_uri    = aws_lambda_function.api_list_videos.invoke_arn
   integration_method = "POST"
 }
 
 resource "aws_apigatewayv2_integration" "get_video" {
-  count              = var.enable_api_gateway ? 1 : 0
-  api_id             = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id             = aws_apigatewayv2_api.video_pipeline.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.api_get_video[0].invoke_arn
+  integration_uri    = aws_lambda_function.api_get_video.invoke_arn
   integration_method = "POST"
 }
 
 resource "aws_apigatewayv2_integration" "start_pipeline" {
-  count              = var.enable_api_gateway ? 1 : 0
-  api_id             = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id             = aws_apigatewayv2_api.video_pipeline.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.api_start_pipeline[0].invoke_arn
+  integration_uri    = aws_lambda_function.api_start_pipeline.invoke_arn
   integration_method = "POST"
 }
 
 resource "aws_apigatewayv2_integration" "get_pipeline_status" {
-  count              = var.enable_api_gateway ? 1 : 0
-  api_id             = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id             = aws_apigatewayv2_api.video_pipeline.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.api_get_pipeline_status[0].invoke_arn
+  integration_uri    = aws_lambda_function.api_get_pipeline_status.invoke_arn
   integration_method = "POST"
 }
 
 resource "aws_apigatewayv2_integration" "list_voices" {
-  count              = var.enable_api_gateway ? 1 : 0
-  api_id             = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id             = aws_apigatewayv2_api.video_pipeline.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.api_list_voices[0].invoke_arn
+  integration_uri    = aws_lambda_function.api_list_voices.invoke_arn
   integration_method = "POST"
 }
 
 resource "aws_apigatewayv2_integration" "get_output_video" {
-  count              = var.enable_api_gateway ? 1 : 0
-  api_id             = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id             = aws_apigatewayv2_api.video_pipeline.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.api_get_output_video[0].invoke_arn
+  integration_uri    = aws_lambda_function.api_get_output_video.invoke_arn
   integration_method = "POST"
 }
 
 resource "aws_apigatewayv2_integration" "get_insights" {
-  count              = var.enable_api_gateway ? 1 : 0
-  api_id             = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id             = aws_apigatewayv2_api.video_pipeline.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.api_get_insights[0].invoke_arn
+  integration_uri    = aws_lambda_function.api_get_insights.invoke_arn
   integration_method = "POST"
 }
 
 resource "aws_apigatewayv2_route" "get_presigned_url" {
-  count     = var.enable_api_gateway ? 1 : 0
-  api_id    = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id    = aws_apigatewayv2_api.video_pipeline.id
   route_key = "POST /upload/presigned"
-  target    = "integrations/${aws_apigatewayv2_integration.get_presigned_url[0].id}"
+  target    = "integrations/${aws_apigatewayv2_integration.get_presigned_url.id}"
 }
 
 resource "aws_apigatewayv2_route" "confirm_upload" {
-  count     = var.enable_api_gateway ? 1 : 0
-  api_id    = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id    = aws_apigatewayv2_api.video_pipeline.id
   route_key = "POST /upload/confirm"
-  target    = "integrations/${aws_apigatewayv2_integration.confirm_upload[0].id}"
+  target    = "integrations/${aws_apigatewayv2_integration.confirm_upload.id}"
 }
 
 resource "aws_apigatewayv2_route" "list_videos" {
-  count     = var.enable_api_gateway ? 1 : 0
-  api_id    = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id    = aws_apigatewayv2_api.video_pipeline.id
   route_key = "GET /videos"
-  target    = "integrations/${aws_apigatewayv2_integration.list_videos[0].id}"
+  target    = "integrations/${aws_apigatewayv2_integration.list_videos.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_video" {
-  count     = var.enable_api_gateway ? 1 : 0
-  api_id    = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id    = aws_apigatewayv2_api.video_pipeline.id
   route_key = "GET /videos/{id}"
-  target    = "integrations/${aws_apigatewayv2_integration.get_video[0].id}"
+  target    = "integrations/${aws_apigatewayv2_integration.get_video.id}"
 }
 
 resource "aws_apigatewayv2_route" "start_pipeline" {
-  count     = var.enable_api_gateway ? 1 : 0
-  api_id    = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id    = aws_apigatewayv2_api.video_pipeline.id
   route_key = "POST /pipeline/start"
-  target    = "integrations/${aws_apigatewayv2_integration.start_pipeline[0].id}"
+  target    = "integrations/${aws_apigatewayv2_integration.start_pipeline.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_pipeline_status" {
-  count     = var.enable_api_gateway ? 1 : 0
-  api_id    = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id    = aws_apigatewayv2_api.video_pipeline.id
   route_key = "GET /pipeline/status/{executionId}"
-  target    = "integrations/${aws_apigatewayv2_integration.get_pipeline_status[0].id}"
+  target    = "integrations/${aws_apigatewayv2_integration.get_pipeline_status.id}"
 }
 
 resource "aws_apigatewayv2_route" "list_voices" {
-  count     = var.enable_api_gateway ? 1 : 0
-  api_id    = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id    = aws_apigatewayv2_api.video_pipeline.id
   route_key = "GET /voices"
-  target    = "integrations/${aws_apigatewayv2_integration.list_voices[0].id}"
+  target    = "integrations/${aws_apigatewayv2_integration.list_voices.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_output_video" {
-  count     = var.enable_api_gateway ? 1 : 0
-  api_id    = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id    = aws_apigatewayv2_api.video_pipeline.id
   route_key = "GET /output/{videoId}"
-  target    = "integrations/${aws_apigatewayv2_integration.get_output_video[0].id}"
+  target    = "integrations/${aws_apigatewayv2_integration.get_output_video.id}"
 }
 
 resource "aws_apigatewayv2_route" "get_insights" {
-  count     = var.enable_api_gateway ? 1 : 0
-  api_id    = aws_apigatewayv2_api.video_pipeline[0].id
+  api_id    = aws_apigatewayv2_api.video_pipeline.id
   route_key = "POST /insights"
-  target    = "integrations/${aws_apigatewayv2_integration.get_insights[0].id}"
+  target    = "integrations/${aws_apigatewayv2_integration.get_insights.id}"
 }
 
 resource "aws_lambda_permission" "api_get_presigned_url" {
-  count         = var.enable_api_gateway ? 1 : 0
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api_get_presigned_url[0].function_name
+  function_name = aws_lambda_function.api_get_presigned_url.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.video_pipeline.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "api_confirm_upload" {
-  count         = var.enable_api_gateway ? 1 : 0
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api_confirm_upload[0].function_name
+  function_name = aws_lambda_function.api_confirm_upload.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.video_pipeline.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "api_list_videos" {
-  count         = var.enable_api_gateway ? 1 : 0
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api_list_videos[0].function_name
+  function_name = aws_lambda_function.api_list_videos.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.video_pipeline.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "api_get_video" {
-  count         = var.enable_api_gateway ? 1 : 0
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api_get_video[0].function_name
+  function_name = aws_lambda_function.api_get_video.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.video_pipeline.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "api_start_pipeline" {
-  count         = var.enable_api_gateway ? 1 : 0
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api_start_pipeline[0].function_name
+  function_name = aws_lambda_function.api_start_pipeline.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.video_pipeline.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "api_get_pipeline_status" {
-  count         = var.enable_api_gateway ? 1 : 0
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api_get_pipeline_status[0].function_name
+  function_name = aws_lambda_function.api_get_pipeline_status.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.video_pipeline.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "api_list_voices" {
-  count         = var.enable_api_gateway ? 1 : 0
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api_list_voices[0].function_name
+  function_name = aws_lambda_function.api_list_voices.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.video_pipeline.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "api_get_output_video" {
-  count         = var.enable_api_gateway ? 1 : 0
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api_get_output_video[0].function_name
+  function_name = aws_lambda_function.api_get_output_video.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.video_pipeline.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "api_get_insights" {
-  count         = var.enable_api_gateway ? 1 : 0
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.api_get_insights[0].function_name
+  function_name = aws_lambda_function.api_get_insights.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.video_pipeline.execution_arn}/*/*"
 }

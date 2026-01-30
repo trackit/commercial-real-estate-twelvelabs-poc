@@ -1,1 +1,1 @@
-export { handler } from './storeEmbeddings';
+export { handler } from './storeEmbeddings'

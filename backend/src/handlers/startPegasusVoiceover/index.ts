@@ -1,1 +1,1 @@
-export { handler } from './startPegasusVoiceover';
+export { handler } from './startPegasusVoiceover'

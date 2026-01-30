@@ -1,1 +1,1 @@
-export { handler } from './marengoCallback';
+export { handler } from './marengoCallback'

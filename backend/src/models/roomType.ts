@@ -10,4 +10,4 @@ export type RoomType =
   | 'Balcony'
   | 'Garage'
   | 'Outdoor'
-  | 'Other';
+  | 'Other'

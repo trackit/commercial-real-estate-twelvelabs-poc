@@ -1,16 +1,16 @@
-import { EmbeddingGenerator } from '../../ports/embeddingGenerator';
+import { EmbeddingGenerator } from '../../ports/embeddingGenerator'
 
 export interface GenerateEmbeddingsInput {
-  videoId: string;
-  videoS3Uri: string;
-  outputS3Uri: string;
-  taskToken?: string;
+  videoId: string
+  videoS3Uri: string
+  outputS3Uri: string
+  taskToken?: string
 }
 
 export interface GenerateEmbeddingsOutput {
-  invocationArn: string;
-  videoId: string;
-  taskToken?: string;
+  invocationArn: string
+  videoId: string
+  taskToken?: string
 }
 
 export class GenerateEmbeddingsUseCase {
@@ -20,12 +20,12 @@ export class GenerateEmbeddingsUseCase {
     const invocationArn = await this.embeddingGenerator.startAsyncEmbedding(
       input.videoS3Uri,
       input.outputS3Uri
-    );
+    )
 
     return {
       invocationArn,
       videoId: input.videoId,
       taskToken: input.taskToken,
-    };
+    }
   }
 }

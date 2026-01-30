@@ -35,8 +35,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         'bg-surface-elevated text-text-primary border border-border hover:bg-border focus:ring-border active:scale-[0.98]',
       ghost:
         'text-text-secondary hover:text-text-primary hover:bg-surface-elevated focus:ring-border',
-      danger:
-        'bg-error text-white hover:bg-error-muted focus:ring-error active:scale-[0.98]',
+      danger: 'bg-error text-white hover:bg-error-muted focus:ring-error active:scale-[0.98]',
     }
 
     const sizes = {

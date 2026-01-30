@@ -1,18 +1,18 @@
-import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
+import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
 import {
   SFNClient,
   DescribeExecutionCommand,
   GetExecutionHistoryCommand,
   HistoryEvent,
-} from '@aws-sdk/client-sfn';
+} from '@aws-sdk/client-sfn'
 
-const sfnClient = new SFNClient({ region: process.env.AWS_REGION });
+const sfnClient = new SFNClient({ region: process.env.AWS_REGION })
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type,Authorization',
   'Access-Control-Allow-Methods': 'GET,OPTIONS',
-};
+}
 
 const STATE_TO_STEP_MAP: Record<string, string[]> = {
   StartMarengoEmbedding: ['retrieve'],
@@ -22,28 +22,28 @@ const STATE_TO_STEP_MAP: Record<string, string[]> = {
   GenerateVoiceoverMap: ['voiceover'],
   SynthesizeAudio: ['audio'],
   ProcessVideo: ['render', 'concat'],
-};
+}
 
 const MAP_STATE_TO_STEP: Record<string, string> = {
   AnalyzeSegmentsMap: 'annotate',
   GenerateVoiceoverMap: 'voiceover',
-};
+}
 
 interface MapProgress {
-  total: number;
-  succeeded: number;
-  inProgress: number;
-  queued: number;
-  failed: number;
+  total: number
+  succeeded: number
+  inProgress: number
+  queued: number
+  failed: number
 }
 
 interface PipelineStep {
-  id: string;
-  name: string;
-  status: 'pending' | 'running' | 'complete' | 'error';
-  progress?: number;
-  detail?: string;
-  mapProgress?: MapProgress;
+  id: string
+  name: string
+  status: 'pending' | 'running' | 'complete' | 'error'
+  progress?: number
+  detail?: string
+  mapProgress?: MapProgress
 }
 
 const PIPELINE_STEPS: PipelineStep[] = [
@@ -55,13 +55,11 @@ const PIPELINE_STEPS: PipelineStep[] = [
   { id: 'audio', name: 'Synthesize audio', status: 'pending' },
   { id: 'render', name: 'Render video segments', status: 'pending' },
   { id: 'concat', name: 'Concatenate final video', status: 'pending' },
-];
+]
 
-async function getAllExecutionHistory(
-  executionArn: string,
-): Promise<HistoryEvent[]> {
-  const allEvents: HistoryEvent[] = [];
-  let nextToken: string | undefined;
+async function getAllExecutionHistory(executionArn: string): Promise<HistoryEvent[]> {
+  const allEvents: HistoryEvent[] = []
+  let nextToken: string | undefined
 
   do {
     const response = await sfnClient.send(
@@ -69,151 +67,141 @@ async function getAllExecutionHistory(
         executionArn,
         maxResults: 1000,
         nextToken,
-      }),
-    );
-    allEvents.push(...(response.events || []));
-    nextToken = response.nextToken;
-  } while (nextToken);
+      })
+    )
+    allEvents.push(...(response.events || []))
+    nextToken = response.nextToken
+  } while (nextToken)
 
-  return allEvents;
+  return allEvents
 }
 
 interface MapStateProgress {
-  total: number;
-  started: number;
-  succeeded: number;
-  failed: number;
+  total: number
+  started: number
+  succeeded: number
+  failed: number
 }
 
-function trackMapProgress(
-  events: HistoryEvent[],
-): Record<string, MapStateProgress> {
-  const mapProgress: Record<string, MapStateProgress> = {};
-  const mapStateStack: string[] = [];
+function trackMapProgress(events: HistoryEvent[]): Record<string, MapStateProgress> {
+  const mapProgress: Record<string, MapStateProgress> = {}
+  const mapStateStack: string[] = []
 
   for (const event of events) {
     if (event.type === 'MapStateEntered') {
-      const stateName = event.stateEnteredEventDetails?.name;
+      const stateName = event.stateEnteredEventDetails?.name
       if (stateName) {
-        mapStateStack.push(stateName);
+        mapStateStack.push(stateName)
         if (!mapProgress[stateName]) {
-          mapProgress[stateName] = { total: 0, started: 0, succeeded: 0, failed: 0 };
+          mapProgress[stateName] = { total: 0, started: 0, succeeded: 0, failed: 0 }
         }
       }
     }
 
     if (event.type === 'MapStateStarted') {
-      const currentMap = mapStateStack[mapStateStack.length - 1];
+      const currentMap = mapStateStack[mapStateStack.length - 1]
       if (currentMap && event.mapStateStartedEventDetails?.length !== undefined) {
-        mapProgress[currentMap].total = event.mapStateStartedEventDetails.length;
+        mapProgress[currentMap].total = event.mapStateStartedEventDetails.length
       }
     }
 
     if (event.type === 'MapIterationStarted') {
-      const currentMap = mapStateStack[mapStateStack.length - 1];
+      const currentMap = mapStateStack[mapStateStack.length - 1]
       if (currentMap) {
-        mapProgress[currentMap].started++;
+        mapProgress[currentMap].started++
       }
     }
 
     if (event.type === 'MapIterationSucceeded') {
-      const currentMap = mapStateStack[mapStateStack.length - 1];
+      const currentMap = mapStateStack[mapStateStack.length - 1]
       if (currentMap) {
-        mapProgress[currentMap].succeeded++;
+        mapProgress[currentMap].succeeded++
       }
     }
 
     if (event.type === 'MapIterationFailed') {
-      const currentMap = mapStateStack[mapStateStack.length - 1];
+      const currentMap = mapStateStack[mapStateStack.length - 1]
       if (currentMap) {
-        mapProgress[currentMap].failed++;
+        mapProgress[currentMap].failed++
       }
     }
 
     if (event.type === 'MapStateExited') {
-      mapStateStack.pop();
+      mapStateStack.pop()
     }
   }
 
-  return mapProgress;
+  return mapProgress
 }
 
-export const handler: APIGatewayProxyHandler = async (
-  event,
-): Promise<APIGatewayProxyResult> => {
+export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: corsHeaders, body: '' };
+    return { statusCode: 200, headers: corsHeaders, body: '' }
   }
 
   try {
-    const executionId = event.pathParameters?.executionId;
+    const executionId = event.pathParameters?.executionId
 
     if (!executionId) {
       return {
         statusCode: 400,
         headers: corsHeaders,
         body: JSON.stringify({ message: 'Execution ID is required' }),
-      };
+      }
     }
 
-    const executionArn = decodeURIComponent(executionId);
+    const executionArn = decodeURIComponent(executionId)
 
     const [describeResponse, historyEvents] = await Promise.all([
       sfnClient.send(new DescribeExecutionCommand({ executionArn })),
       getAllExecutionHistory(executionArn),
-    ]);
+    ])
 
-    const steps = PIPELINE_STEPS.map((step) => ({ ...step }));
-    const completedStates = new Set<string>();
-    let currentState: string | null = null;
+    const steps = PIPELINE_STEPS.map((step) => ({ ...step }))
+    const completedStates = new Set<string>()
+    let currentState: string | null = null
 
     for (const historyEvent of historyEvents) {
-      if (
-        historyEvent.type === 'TaskStateEntered' ||
-        historyEvent.type === 'MapStateEntered'
-      ) {
-        const stateEnteredDetails = historyEvent.stateEnteredEventDetails;
+      if (historyEvent.type === 'TaskStateEntered' || historyEvent.type === 'MapStateEntered') {
+        const stateEnteredDetails = historyEvent.stateEnteredEventDetails
         if (stateEnteredDetails?.name) {
-          currentState = stateEnteredDetails.name;
+          currentState = stateEnteredDetails.name
         }
       }
 
-      if (
-        historyEvent.type === 'TaskStateExited' ||
-        historyEvent.type === 'MapStateExited'
-      ) {
-        const stateExitedDetails = historyEvent.stateExitedEventDetails;
+      if (historyEvent.type === 'TaskStateExited' || historyEvent.type === 'MapStateExited') {
+        const stateExitedDetails = historyEvent.stateExitedEventDetails
         if (stateExitedDetails?.name) {
-          completedStates.add(stateExitedDetails.name);
+          completedStates.add(stateExitedDetails.name)
         }
       }
     }
 
-    const mapProgressData = trackMapProgress(historyEvents);
+    const mapProgressData = trackMapProgress(historyEvents)
 
     for (const [stateName, stepIds] of Object.entries(STATE_TO_STEP_MAP)) {
       if (completedStates.has(stateName)) {
         for (const stepId of stepIds) {
-          const step = steps.find((s) => s.id === stepId);
+          const step = steps.find((s) => s.id === stepId)
           if (step) {
-            step.status = 'complete';
+            step.status = 'complete'
           }
         }
       } else if (currentState === stateName) {
         for (const stepId of stepIds) {
-          const step = steps.find((s) => s.id === stepId);
-          if (step && step.status === 'pending') step.status = 'running';
+          const step = steps.find((s) => s.id === stepId)
+          if (step && step.status === 'pending') step.status = 'running'
         }
       }
     }
 
     for (const [mapStateName, stepId] of Object.entries(MAP_STATE_TO_STEP)) {
-      const progress = mapProgressData[mapStateName];
+      const progress = mapProgressData[mapStateName]
       if (progress && progress.total > 0) {
-        const step = steps.find((s) => s.id === stepId);
+        const step = steps.find((s) => s.id === stepId)
         if (step) {
-          const inProgress = progress.started - progress.succeeded - progress.failed;
-          const queued = progress.total - progress.started;
+          const inProgress = progress.started - progress.succeeded - progress.failed
+          const queued = progress.total - progress.started
 
           step.mapProgress = {
             total: progress.total,
@@ -221,51 +209,52 @@ export const handler: APIGatewayProxyHandler = async (
             inProgress,
             queued,
             failed: progress.failed,
-          };
+          }
 
-          step.progress = Math.round((progress.succeeded / progress.total) * 100);
+          step.progress = Math.round((progress.succeeded / progress.total) * 100)
 
           if (completedStates.has(mapStateName)) {
-            step.status = 'complete';
-            step.detail = `${progress.succeeded}/${progress.total} complete`;
+            step.status = 'complete'
+            step.detail = `${progress.succeeded}/${progress.total} complete`
           } else if (progress.started > 0) {
-            step.status = 'running';
-            step.detail = `✅ ${progress.succeeded}  ⏳ ${inProgress}  📋 ${queued}`;
+            step.status = 'running'
+            step.detail = `✅ ${progress.succeeded}  ⏳ ${inProgress}  📋 ${queued}`
             if (progress.failed > 0) {
-              step.detail += `  ❌ ${progress.failed}`;
+              step.detail += `  ❌ ${progress.failed}`
             }
           }
         }
       }
     }
 
-    let overallStatus: 'running' | 'complete' | 'error' | 'idle' = 'running';
-    let outputPath: string | undefined;
-    let error: string | undefined;
+    let overallStatus: 'running' | 'complete' | 'error' | 'idle' = 'running'
+    let outputPath: string | undefined
+    let error: string | undefined
 
     if (describeResponse.status === 'SUCCEEDED') {
-      overallStatus = 'complete';
-      steps.forEach((step) => (step.status = 'complete'));
+      overallStatus = 'complete'
+      steps.forEach((step) => (step.status = 'complete'))
 
       try {
-        const output = JSON.parse(describeResponse.output || '{}');
-        outputPath = output.finalVideoS3Uri;
-      } catch {}
+        const output = JSON.parse(describeResponse.output || '{}')
+        outputPath = output.finalVideoS3Uri
+      } catch {
+        outputPath = undefined
+      }
     } else if (
       describeResponse.status === 'FAILED' ||
       describeResponse.status === 'ABORTED' ||
       describeResponse.status === 'TIMED_OUT'
     ) {
-      overallStatus = 'error';
-      error =
-        describeResponse.error || describeResponse.cause || 'Pipeline failed';
+      overallStatus = 'error'
+      error = describeResponse.error || describeResponse.cause || 'Pipeline failed'
 
       if (currentState) {
-        const stepIds = STATE_TO_STEP_MAP[currentState];
+        const stepIds = STATE_TO_STEP_MAP[currentState]
         if (stepIds) {
           for (const stepId of stepIds) {
-            const step = steps.find((s) => s.id === stepId);
-            if (step) step.status = 'error';
+            const step = steps.find((s) => s.id === stepId)
+            if (step) step.status = 'error'
           }
         }
       }
@@ -283,13 +272,13 @@ export const handler: APIGatewayProxyHandler = async (
         startDate: describeResponse.startDate?.toISOString(),
         stopDate: describeResponse.stopDate?.toISOString(),
       }),
-    };
+    }
   } catch (error) {
-    console.error('Error getting pipeline status:', error);
+    console.error('Error getting pipeline status:', error)
     return {
       statusCode: 500,
       headers: corsHeaders,
       body: JSON.stringify({ message: 'Failed to get pipeline status' }),
-    };
+    }
   }
-};
+}

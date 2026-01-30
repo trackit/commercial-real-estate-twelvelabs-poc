@@ -45,7 +45,9 @@ function loadFromStorage(): ApiConfig {
         gemini: parsed.gemini || '',
       }
     }
-  } catch {}
+  } catch {
+    return { elevenlabs: '', gemini: '' }
+  }
   return { elevenlabs: '', gemini: '' }
 }
 

@@ -1,14 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
-import { SynthesizeAudioUseCase } from './synthesizeAudio';
-import { TextToSpeech } from '../../ports/textToSpeech';
+import { describe, it, expect, vi } from 'vitest'
+import { SynthesizeAudioUseCase } from './synthesizeAudio'
+import { TextToSpeech } from '../../ports/textToSpeech'
 
 describe('SynthesizeAudioUseCase', () => {
   it('should synthesize audio for each segment with voiceover', async () => {
     const mockTTS: TextToSpeech = {
       synthesize: vi.fn().mockResolvedValue('s3://bucket/audio.mp3'),
-    };
+    }
 
-    const useCase = new SynthesizeAudioUseCase(mockTTS);
+    const useCase = new SynthesizeAudioUseCase(mockTTS)
     const result = await useCase.execute({
       segments: [
         {
@@ -28,21 +28,21 @@ describe('SynthesizeAudioUseCase', () => {
       ],
       outputBucket: 'test-bucket',
       outputPrefix: 'video-123/audio',
-    });
+    })
 
-    expect(result.segmentsWithAudio).toHaveLength(2);
+    expect(result.segmentsWithAudio).toHaveLength(2)
     expect(result.segmentsWithAudio[0].audioS3Uri).toBe(
-      's3://test-bucket/video-123/audio/audio_0.mp3',
-    );
-    expect(mockTTS.synthesize).toHaveBeenCalledTimes(2);
-  });
+      's3://test-bucket/video-123/audio/audio_0.mp3'
+    )
+    expect(mockTTS.synthesize).toHaveBeenCalledTimes(2)
+  })
 
   it('should skip audio synthesis for segments without voiceover', async () => {
     const mockTTS: TextToSpeech = {
       synthesize: vi.fn().mockResolvedValue('s3://bucket/audio.mp3'),
-    };
+    }
 
-    const useCase = new SynthesizeAudioUseCase(mockTTS);
+    const useCase = new SynthesizeAudioUseCase(mockTTS)
     const result = await useCase.execute({
       segments: [
         {
@@ -62,18 +62,18 @@ describe('SynthesizeAudioUseCase', () => {
       ],
       outputBucket: 'test-bucket',
       outputPrefix: 'video-123/audio',
-    });
+    })
 
-    expect(result.segmentsWithAudio[1].audioS3Uri).toBe('');
-    expect(mockTTS.synthesize).toHaveBeenCalledTimes(1);
-  });
+    expect(result.segmentsWithAudio[1].audioS3Uri).toBe('')
+    expect(mockTTS.synthesize).toHaveBeenCalledTimes(1)
+  })
 
   it('should pass custom voice ID to TTS', async () => {
     const mockTTS: TextToSpeech = {
       synthesize: vi.fn().mockResolvedValue('s3://bucket/audio.mp3'),
-    };
+    }
 
-    const useCase = new SynthesizeAudioUseCase(mockTTS);
+    const useCase = new SynthesizeAudioUseCase(mockTTS)
     await useCase.execute({
       segments: [
         {
@@ -87,12 +87,10 @@ describe('SynthesizeAudioUseCase', () => {
       outputBucket: 'bucket',
       outputPrefix: 'prefix',
       voiceId: 'Matthew',
-    });
+    })
 
-    expect(mockTTS.synthesize).toHaveBeenCalledWith(
-      'Test text.',
-      expect.any(String),
-      { voiceId: 'Matthew' },
-    );
-  });
-});
+    expect(mockTTS.synthesize).toHaveBeenCalledWith('Test text.', expect.any(String), {
+      voiceId: 'Matthew',
+    })
+  })
+})

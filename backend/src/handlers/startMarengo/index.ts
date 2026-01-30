@@ -1,1 +1,1 @@
-export { handler } from './startMarengo';
+export { handler } from './startMarengo'

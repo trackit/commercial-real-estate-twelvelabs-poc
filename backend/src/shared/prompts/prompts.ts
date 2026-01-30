@@ -1,5 +1,5 @@
-import { SegmentAnalysis } from '../../models/segment';
-import { calculateMaxWords, truncateText } from '../utils/utils';
+import { SegmentAnalysis } from '../../models/segment'
+import { calculateMaxWords, truncateText } from '../utils/utils'
 
 export function buildAnalysisPrompt(startSec: number, endSec: number): string {
   return `You are analyzing a single segment of a real-estate walkthrough video.
@@ -29,7 +29,7 @@ Return a JSON object with:
 Be strict:
 - appeal_score 0–3 = useless or very shaky,
 - 4–6 = acceptable but not great,
-- 7–10 = visually attractive, good for a promo.`;
+- 7–10 = visually attractive, good for a promo.`
 }
 
 export function buildVoiceoverPrompt(
@@ -38,17 +38,17 @@ export function buildVoiceoverPrompt(
   endSec: number,
   previousScript: string,
   agencyName?: string,
-  streetAddress?: string,
+  streetAddress?: string
 ): string {
-  const duration = endSec - startSec;
-  const maxWords = calculateMaxWords(duration);
-  const safePrev = truncateText(previousScript.replace(/"/g, ''), 1200);
+  const duration = endSec - startSec
+  const maxWords = calculateMaxWords(duration)
+  const safePrev = truncateText(previousScript.replace(/"/g, ''), 1200)
 
   const contextLine = previousScript
     ? `Here is the narration script that has already been spoken before this segment in the tour:
 "${safePrev}"
 Write the next single sentence that naturally continues this narration, only for the current segment, without explicitly referencing 'previous sentences' or 'as before'.`
-    : 'This is the first narration line of the tour.';
+    : 'This is the first narration line of the tour.'
 
   const propertyContext =
     agencyName || streetAddress
@@ -56,7 +56,7 @@ Write the next single sentence that naturally continues this narration, only for
 ${agencyName ? `- Agency: ${agencyName}` : ''}
 ${streetAddress ? `- Address: ${streetAddress}` : ''}
 `
-      : '';
+      : ''
 
   return `You are writing a single voiceover line for a professional real-estate house tour.
 
@@ -75,11 +75,11 @@ Write exactly ONE natural English sentence that a real-estate agent could say ov
 Return a JSON object with:
 {
   "voiceover": "your single sentence here"
-}`;
+}`
 }
 
 export function buildSelectionPrompt(candidates: SegmentAnalysis[]): string {
-  const candidatesJson = JSON.stringify(candidates, null, 2);
+  const candidatesJson = JSON.stringify(candidates, null, 2)
 
   return `You are an expert short-form real-estate video editor.
 
@@ -130,7 +130,7 @@ Return ONLY valid JSON in this exact structure:
 }
 
 Do not include any explanation, commentary, Markdown, or code fences.
-Only return the pure JSON object.`;
+Only return the pure JSON object.`
 }
 
 export const PEGASUS_ANALYSIS_JSON_SCHEMA = {
@@ -146,16 +146,10 @@ export const PEGASUS_ANALYSIS_JSON_SCHEMA = {
         is_transition_only: { type: 'boolean' },
         short_description: { type: 'string' },
       },
-      required: [
-        'room_type',
-        'title',
-        'appeal_score',
-        'is_hero_candidate',
-        'is_transition_only',
-      ],
+      required: ['room_type', 'title', 'appeal_score', 'is_hero_candidate', 'is_transition_only'],
     },
   },
-};
+}
 
 export const PEGASUS_VOICEOVER_JSON_SCHEMA = {
   jsonSchema: {
@@ -168,4 +162,4 @@ export const PEGASUS_VOICEOVER_JSON_SCHEMA = {
       required: ['voiceover'],
     },
   },
-};
+}

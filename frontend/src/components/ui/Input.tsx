@@ -12,19 +12,14 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  (
-    { className, label, error, hint, leftIcon, rightElement, isPassword, type, ...props },
-    ref
-  ) => {
+  ({ className, label, error, hint, leftIcon, rightElement, isPassword, type, ...props }, ref) => {
     const [showPassword, setShowPassword] = useState(false)
 
     const inputType = isPassword ? (showPassword ? 'text' : 'password') : type
 
     return (
       <div className="space-y-1.5">
-        {label && (
-          <label className="block text-sm font-medium text-text-primary">{label}</label>
-        )}
+        {label && <label className="block text-sm font-medium text-text-primary">{label}</label>}
         <div className="relative">
           {leftIcon && (
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">

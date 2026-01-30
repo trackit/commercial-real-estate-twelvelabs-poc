@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { SelectSegmentsUseCase } from './selectSegments';
-import { SegmentSelector } from '../../ports/segmentSelector';
+import { describe, it, expect, vi } from 'vitest'
+import { SelectSegmentsUseCase } from './selectSegments'
+import { SegmentSelector } from '../../ports/segmentSelector'
 
 describe('SelectSegmentsUseCase', () => {
   it('should select segments and calculate total duration', async () => {
@@ -9,9 +9,9 @@ describe('SelectSegmentsUseCase', () => {
         { id: 0, title: 'Exterior', startTime: 0, endTime: 10 },
         { id: 2, title: 'Living Room', startTime: 20, endTime: 35 },
       ]),
-    };
+    }
 
-    const useCase = new SelectSegmentsUseCase(mockSelector);
+    const useCase = new SelectSegmentsUseCase(mockSelector)
     const result = await useCase.execute({
       analyses: [
         {
@@ -48,18 +48,18 @@ describe('SelectSegmentsUseCase', () => {
           isTransitionOnly: false,
         },
       ],
-    });
+    })
 
-    expect(result.selectedSegments).toHaveLength(2);
-    expect(result.totalDuration).toBe(25);
-  });
+    expect(result.selectedSegments).toHaveLength(2)
+    expect(result.totalDuration).toBe(25)
+  })
 
   it('should filter out transition-only segments', async () => {
     const mockSelector: SegmentSelector = {
       selectSegments: vi.fn().mockResolvedValue([]),
-    };
+    }
 
-    const useCase = new SelectSegmentsUseCase(mockSelector);
+    const useCase = new SelectSegmentsUseCase(mockSelector)
     await useCase.execute({
       analyses: [
         {
@@ -85,28 +85,24 @@ describe('SelectSegmentsUseCase', () => {
           isTransitionOnly: true,
         },
       ],
-    });
+    })
 
     expect(mockSelector.selectSegments).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 0, isTransitionOnly: false }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ id: 0, isTransitionOnly: false })]),
       undefined
-    );
+    )
     expect(mockSelector.selectSegments).toHaveBeenCalledWith(
-      expect.not.arrayContaining([
-        expect.objectContaining({ id: 1, isTransitionOnly: true }),
-      ]),
+      expect.not.arrayContaining([expect.objectContaining({ id: 1, isTransitionOnly: true })]),
       undefined
-    );
-  });
+    )
+  })
 
   it('should return empty array when no valid candidates', async () => {
     const mockSelector: SegmentSelector = {
       selectSegments: vi.fn(),
-    };
+    }
 
-    const useCase = new SelectSegmentsUseCase(mockSelector);
+    const useCase = new SelectSegmentsUseCase(mockSelector)
     const result = await useCase.execute({
       analyses: [
         {
@@ -121,10 +117,10 @@ describe('SelectSegmentsUseCase', () => {
           isTransitionOnly: true,
         },
       ],
-    });
+    })
 
-    expect(result.selectedSegments).toHaveLength(0);
-    expect(result.totalDuration).toBe(0);
-    expect(mockSelector.selectSegments).not.toHaveBeenCalled();
-  });
-});
+    expect(result.selectedSegments).toHaveLength(0)
+    expect(result.totalDuration).toBe(0)
+    expect(mockSelector.selectSegments).not.toHaveBeenCalled()
+  })
+})

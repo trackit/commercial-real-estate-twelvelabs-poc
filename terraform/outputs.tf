@@ -25,7 +25,7 @@ output "lambda_role_arn" {
 
 output "api_endpoint" {
   description = "API Gateway endpoint URL"
-  value       = var.enable_api_gateway ? aws_apigatewayv2_api.video_pipeline[0].api_endpoint : null
+  value       = aws_apigatewayv2_api.video_pipeline.api_endpoint
 }
 
 output "task_tokens_table_name" {

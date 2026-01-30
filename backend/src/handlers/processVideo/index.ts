@@ -1,1 +1,1 @@
-export { handler } from './processVideo';
+export { handler } from './processVideo'

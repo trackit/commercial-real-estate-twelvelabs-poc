@@ -1,1 +1,1 @@
-export { handler } from './startPegasusAnalysis';
+export { handler } from './startPegasusAnalysis'

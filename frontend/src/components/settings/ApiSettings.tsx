@@ -14,7 +14,16 @@ interface ApiKeyFieldProps {
   onTest: () => Promise<boolean>
 }
 
-function ApiKeyField({ label, value, isConfigured, testResult, hint, onChange, onClearTestResult, onTest }: ApiKeyFieldProps) {
+function ApiKeyField({
+  label,
+  value,
+  isConfigured,
+  testResult,
+  hint,
+  onChange,
+  onClearTestResult,
+  onTest,
+}: ApiKeyFieldProps) {
   const [isTesting, setIsTesting] = useState(false)
 
   const handleTest = async () => {
@@ -49,7 +58,9 @@ function ApiKeyField({ label, value, isConfigured, testResult, hint, onChange, o
                     Configured
                   </Badge>
                 ) : (
-                  <Badge variant="default" size="sm">Not configured</Badge>
+                  <Badge variant="default" size="sm">
+                    Not configured
+                  </Badge>
                 )}
               </div>
             </div>
@@ -93,7 +104,8 @@ function ApiKeyField({ label, value, isConfigured, testResult, hint, onChange, o
 }
 
 export function ApiSettings() {
-  const { config, status, testResults, updateConfig, saveConfig, testConnection, setTestResult } = useApiConfig()
+  const { config, status, testResults, updateConfig, saveConfig, testConnection, setTestResult } =
+    useApiConfig()
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
 
@@ -140,14 +152,17 @@ export function ApiSettings() {
                         Connected
                       </Badge>
                     ) : (
-                      <Badge variant="default" size="sm">Checking...</Badge>
+                      <Badge variant="default" size="sm">
+                        Checking...
+                      </Badge>
                     )}
                   </div>
                 </div>
               </div>
               <p className="text-sm text-text-muted">
-                AWS-powered backend with Marengo/Pegasus video analysis and Nova Pro LLM.
-                Set <code className="bg-surface-secondary px-1 rounded">VITE_API_BASE_URL</code> in your environment.
+                AWS-powered backend with Marengo/Pegasus video analysis and Nova Pro LLM. Set{' '}
+                <code className="bg-surface-secondary px-1 rounded">VITE_API_BASE_URL</code> in your
+                environment.
               </p>
             </div>
           </div>
@@ -163,6 +178,17 @@ export function ApiSettings() {
           onClearTestResult={() => setTestResult('elevenlabs', null)}
           onTest={() => testConnection('elevenlabs', config.elevenlabs)}
         />
+
+        <ApiKeyField
+          label="Google Cloud API Key"
+          value={config.gemini}
+          isConfigured={status.gemini}
+          testResult={testResults.gemini}
+          hint="Required for Location Insights. Enable Geocoding API and Places API in Google Cloud Console."
+          onChange={(value) => updateConfig('gemini', value)}
+          onClearTestResult={() => setTestResult('gemini', null)}
+          onTest={() => testConnection('gemini', config.gemini)}
+        />
       </div>
 
       <Card variant="glass" className="p-4">
@@ -170,7 +196,8 @@ export function ApiSettings() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text-secondary">
-                Your API keys are stored in your browser's local storage and persist across sessions.
+                Your API keys are stored in your browser's local storage and persist across
+                sessions.
               </p>
             </div>
             <Button onClick={handleSave} isLoading={isSaving} className="ml-4">

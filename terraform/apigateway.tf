@@ -223,6 +223,22 @@ resource "aws_lambda_function" "api_get_output_video" {
   }
 }
 
+resource "aws_lambda_function" "api_get_insights" {
+  count            = var.enable_api_gateway ? 1 : 0
+  function_name    = "${local.name_prefix}-api-get-insights"
+  runtime          = "nodejs20.x"
+  handler          = "handlers/api/getInsights.handler"
+  timeout          = 60
+  memory_size      = 256
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  role             = aws_iam_role.lambda.arn
+
+  tags = {
+    Name = "${local.name_prefix}-api-get-insights"
+  }
+}
+
 resource "aws_apigatewayv2_integration" "get_presigned_url" {
   count              = var.enable_api_gateway ? 1 : 0
   api_id             = aws_apigatewayv2_api.video_pipeline[0].id
@@ -287,6 +303,14 @@ resource "aws_apigatewayv2_integration" "get_output_video" {
   integration_method = "POST"
 }
 
+resource "aws_apigatewayv2_integration" "get_insights" {
+  count              = var.enable_api_gateway ? 1 : 0
+  api_id             = aws_apigatewayv2_api.video_pipeline[0].id
+  integration_type   = "AWS_PROXY"
+  integration_uri    = aws_lambda_function.api_get_insights[0].invoke_arn
+  integration_method = "POST"
+}
+
 resource "aws_apigatewayv2_route" "get_presigned_url" {
   count     = var.enable_api_gateway ? 1 : 0
   api_id    = aws_apigatewayv2_api.video_pipeline[0].id
@@ -341,6 +365,13 @@ resource "aws_apigatewayv2_route" "get_output_video" {
   api_id    = aws_apigatewayv2_api.video_pipeline[0].id
   route_key = "GET /output/{videoId}"
   target    = "integrations/${aws_apigatewayv2_integration.get_output_video[0].id}"
+}
+
+resource "aws_apigatewayv2_route" "get_insights" {
+  count     = var.enable_api_gateway ? 1 : 0
+  api_id    = aws_apigatewayv2_api.video_pipeline[0].id
+  route_key = "POST /insights"
+  target    = "integrations/${aws_apigatewayv2_integration.get_insights[0].id}"
 }
 
 resource "aws_lambda_permission" "api_get_presigned_url" {
@@ -411,6 +442,15 @@ resource "aws_lambda_permission" "api_get_output_video" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.api_get_output_video[0].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "api_get_insights" {
+  count         = var.enable_api_gateway ? 1 : 0
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api_get_insights[0].function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.video_pipeline[0].execution_arn}/*/*"
 }

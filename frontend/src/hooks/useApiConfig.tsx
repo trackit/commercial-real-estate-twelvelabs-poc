@@ -4,10 +4,12 @@ import type { ConfigStatus } from '../types'
 
 interface ApiConfig {
   elevenlabs: string
+  gemini: string
 }
 
 type TestResults = {
   elevenlabs: boolean | null
+  gemini: boolean | null
   aws: boolean | null
 }
 
@@ -29,6 +31,7 @@ const STORAGE_KEY = 'cre-api-config'
 
 const defaultTestResults: TestResults = {
   elevenlabs: null,
+  gemini: null,
   aws: null,
 }
 
@@ -39,10 +42,11 @@ function loadFromStorage(): ApiConfig {
       const parsed = JSON.parse(stored)
       return {
         elevenlabs: parsed.elevenlabs || '',
+        gemini: parsed.gemini || '',
       }
     }
   } catch {}
-  return { elevenlabs: '' }
+  return { elevenlabs: '', gemini: '' }
 }
 
 function saveToStorage(config: ApiConfig): void {
@@ -52,6 +56,7 @@ function saveToStorage(config: ApiConfig): void {
 function computeStatus(config: ApiConfig, awsStatus: boolean = true): ConfigStatus {
   return {
     elevenlabs: !!config.elevenlabs,
+    gemini: !!config.gemini,
     aws: awsStatus,
   }
 }
@@ -77,7 +82,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           return false
         }
       }
-      
+
       const result = !!apiKey && apiKey.length > 10
       setTestResults((prev) => ({ ...prev, [key]: result }))
       return result
@@ -97,12 +102,15 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       const stored = loadFromStorage()
       setConfig(stored)
-      
+
       await testConnection('aws')
       if (stored.elevenlabs) {
         await testConnection('elevenlabs', stored.elevenlabs)
       }
-      
+      if (stored.gemini) {
+        await testConnection('gemini', stored.gemini)
+      }
+
       setIsLoading(false)
     }
     init()

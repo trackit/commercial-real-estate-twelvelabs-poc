@@ -73,6 +73,7 @@ export function usePipeline(): UsePipelineReturn {
         steps: steps || prev.steps,
         outputPath,
         error,
+        streetAddress: prev.streetAddress,
       }))
 
       if (status === 'complete' || status === 'error') {
@@ -119,6 +120,7 @@ export function usePipeline(): UsePipelineReturn {
         steps: initialSteps.map((s) => ({ ...s, status: 'pending' })),
         segments: [],
         error: undefined,
+        streetAddress: config.streetAddress,
       })
       setLogs([`Pipeline started: ${executionId}`])
 

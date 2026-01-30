@@ -5,6 +5,7 @@ import { useApiConfig } from '../../hooks/useApiConfig'
 import { usePipeline } from '../../hooks/usePipeline'
 import { usePipelineConfig } from '../../hooks/usePipelineConfig'
 import { Button, Card, CardHeader, CardTitle, Input, Progress, Select } from '../ui'
+import { LocationInsights } from './LocationInsights'
 import { PipelineSteps } from './PipelineSteps'
 import { SegmentCard } from './SegmentCard'
 import { VideoPreview } from './VideoPreview'
@@ -189,6 +190,8 @@ export function PipelineView() {
         </div>
 
         <VideoPreview outputPath={state.outputPath} />
+
+        {state.streetAddress && <LocationInsights streetAddress={state.streetAddress} />}
 
         <div className="flex justify-center gap-4">
           <Button variant="secondary" onClick={reset} leftIcon={<RotateCcw className="w-4 h-4" />}>

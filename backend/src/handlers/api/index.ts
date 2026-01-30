@@ -6,3 +6,4 @@ export { handler as listVoicesHandler } from './listVoices';
 export { handler as startPipelineHandler } from './startPipeline';
 export { handler as getPipelineStatusHandler } from './getPipelineStatus';
 export { handler as getOutputVideoHandler } from './getOutputVideo';
+export { handler as getInsightsHandler } from './getInsights';

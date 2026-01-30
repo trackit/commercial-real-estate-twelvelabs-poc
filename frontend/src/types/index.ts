@@ -12,6 +12,7 @@ export interface ApiResponse<T> {
 export interface ConfigStatus {
   aws: boolean
   elevenlabs: boolean
+  gemini: boolean
 }
 
 export interface Video {
@@ -74,6 +75,7 @@ export interface PipelineState {
   segments: Segment[]
   outputPath?: string
   error?: string
+  streetAddress?: string
 }
 
 export interface LocationInsights {
